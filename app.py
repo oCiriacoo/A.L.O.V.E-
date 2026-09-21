@@ -1,9 +1,9 @@
 import streamlit as st
-from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from datetime import datetime
+import urllib.parse
 
-# Configuração de tela mobile
+# Configuração de ecrã móvel
 st.set_page_config(
     page_title="A.L.O.V.E. Mobile",
     page_icon="🚛",
@@ -26,19 +26,25 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Conexão com o Google Sheets
-conn = st.connection("gsheets", type=GSheetsConnection)
+# ID da folha ALOV_Core_DB
+SHEET_ID = "10FluiIwlynIlPDA74QI8mpHSIrAc-62H1hZNRBsvfCA"
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=30)
 def carregar_dados(worksheet_name: str):
-    """Carrega dados da aba informada com cache de 60 segundos."""
+    """Lê a aba da folha pública diretamente via exportação CSV."""
+    sheet_encoded = urllib.parse.quote(worksheet_name)
+    url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={sheet_encoded}"
     try:
-        df = conn.read(worksheet=worksheet_name)
-        return df if df is not None else pd.DataFrame()
-    except Exception:
+        df = pd.read_csv(url)
+        # Remove colunas totalmente vazias originadas pelo Sheets
+        df = df.dropna(how="all", axis=1)
+        df = df.dropna(how="all", axis=0)
+        return df
+    except Exception as e:
+        st.error(f"Erro ao carregar '{worksheet_name}': {e}")
         return pd.DataFrame()
 
-# Cabeçalho Mobile
+# Cabeçalho Móvel
 col_title, col_ref = st.columns([3, 1])
 with col_title:
     st.markdown("### 🚛 A.L.O.V.E. Mobile")
@@ -48,7 +54,7 @@ with col_ref:
         st.cache_data.clear()
         st.rerun()
 
-# Abas operacionais solicitadas
+# Três Abas Operacionais
 tab_carretas, tab_producao, tab_frota_glp = st.tabs([
     "🚚 Carretas",
     "🏭 Produção",
@@ -56,7 +62,7 @@ tab_carretas, tab_producao, tab_frota_glp = st.tabs([
 ])
 
 # ==============================================================================
-# ABA 1: CARRETAS (Programado ao Termo / Pátio)
+# ABA 1: CARRETAS (Pátio & Programação)
 # ==============================================================================
 with tab_carretas:
     st.subheader("Fluxo de Pátio & Carretas")
@@ -85,7 +91,7 @@ with tab_carretas:
         st.write("---")
         st.dataframe(df_c, use_container_width=True, hide_index=True)
     else:
-        st.info("Aba 'Patio_Programacao' sem dados no momento.")
+        st.info("Aba 'Patio_Programacao' vazia ou sem registos.")
 
 # ==============================================================================
 # ABA 2: PRODUÇÃO & QUALIDADE
@@ -102,15 +108,13 @@ with tab_producao:
         col_maq = next((c for c in df_p.columns if any(k in c for k in ["MAQUINA", "LINHA", "EQUIPAMENTO"])), None)
         col_vol = next((c for c in df_p.columns if any(k in c for k in ["PRODUCAO", "TON", "PESO", "QTD", "VOLUME"])), None)
         
-        # Métrica Produção Total
         if col_vol:
             try:
                 prod_total = pd.to_numeric(df_p[col_vol], errors='coerce').sum()
                 st.metric("🏭 Produção Total", f"{prod_total:,.1f} t")
             except Exception:
-                st.metric("Total de Registros", len(df_p))
+                st.metric("Total de Registos", len(df_p))
                 
-        # Produção por Máquina
         if col_maq and col_vol:
             st.markdown("##### ⚙️ Produção por Máquina")
             try:
@@ -123,7 +127,7 @@ with tab_producao:
         st.markdown("**Apontamentos de Produção:**")
         st.dataframe(df_prod, use_container_width=True, hide_index=True)
     else:
-        st.info("Aba 'Expedicao_Producao' indisponível.")
+        st.info("Aba 'Expedicao_Producao' indisponível ou vazia.")
         
     if not df_qual.empty:
         st.write("---")
@@ -136,7 +140,6 @@ with tab_producao:
 with tab_frota_glp:
     st.subheader("Gestão de Máquinas & GLP")
     
-    # --- PARTE 1: MÁQUINAS POR PERÍODO / HORÁRIO ---
     st.markdown("#### 🚜 Máquinas por Período / Turno")
     df_frota = carregar_dados("Rodizio_Frota")
     
@@ -148,11 +151,8 @@ with tab_frota_glp:
         
         if col_turno:
             turnos = ["TODOS"] + [str(x) for x in df_f[col_turno].dropna().unique().tolist()]
-            
-            # Seletor inteligente de período
             hora_atual = datetime.now().hour
             idx_sugerido = 0
-            # Sugestão automática baseada no horário atual
             for i, t in enumerate(turnos):
                 if "00:00" in t and (0 <= hora_atual < 8):
                     idx_sugerido = i
@@ -178,8 +178,6 @@ with tab_frota_glp:
         st.info("Aba 'Rodizio_Frota' sem dados.")
         
     st.write("---")
-    
-    # --- PARTE 2: GLP (TOTAL E POR MÁQUINA) ---
     st.markdown("#### ⛽ Abastecimento de GLP")
     df_glp = carregar_dados("Abastecimentos_GLP")
     
@@ -190,7 +188,6 @@ with tab_frota_glp:
         col_maq_glp = next((c for c in df_g.columns if any(k in c for k in ["EQUIPAMENTO", "MAQUINA", "TAG", "EMPILHADEIRA"])), None)
         col_qtd_glp = next((c for c in df_g.columns if any(k in c for k in ["QTD", "QUANTIDADE", "VOLUME", "LITROS", "KG", "TOTAL"])), None)
         
-        # Total Geral de GLP
         if col_qtd_glp:
             try:
                 glp_total = pd.to_numeric(df_g[col_qtd_glp], errors='coerce').sum()
@@ -198,10 +195,8 @@ with tab_frota_glp:
             except Exception:
                 st.metric("Total de Abastecimentos", len(df_g))
         else:
-            # Caso cada linha represente 1 botijão/troca
-            st.metric("Total de Trocas/Abastecimentos", f"{len(df_g)} un")
+            st.metric("Total de Registos", f"{len(df_g)} un")
             
-        # GLP por Máquina
         if col_maq_glp:
             st.markdown("##### 🚜 GLP por Máquina")
             if col_qtd_glp:
@@ -212,14 +207,13 @@ with tab_frota_glp:
                 except Exception:
                     st.dataframe(df_g[[col_maq_glp, col_qtd_glp]], use_container_width=True, hide_index=True)
             else:
-                # Se for contagem de trocas de botijão por máquina
                 trocas_maq = df_g[col_maq_glp].value_counts().reset_index()
-                trocas_maq.columns = ["Equipamento", "Qtd Trocas"]
+                trocas_maq.columns = ["Equipamento", "Contagem"]
                 st.dataframe(trocas_maq, use_container_width=True, hide_index=True)
                 
         st.markdown("**Detalhamento de Abastecimentos:**")
         st.dataframe(df_glp, use_container_width=True, hide_index=True)
     else:
-        st.info("Aba 'Abastecimentos_GLP' sem registros.")
+        st.info("Aba 'Abastecimentos_GLP' sem registos.")
 
 st.caption("A.L.O.V.E. Mobile Dashboard")
