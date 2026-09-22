@@ -55,7 +55,6 @@ def carregar_dados(worksheet_name: str, cabecalho=0):
     except Exception:
         return pd.DataFrame()
 
-# Função segura para converter strings brasileiras com vírgula para float
 def safe_to_numeric(val):
     try:
         v = str(val).replace(".", "").replace(",", ".")
@@ -78,22 +77,22 @@ tab_carretas, tab_prod_exp, tab_frota_glp = st.tabs([
 ])
 
 # ==============================================================================
-# ABA 1: CARRETAS (Blocos)
+# ABA 1: CARRETAS (Blocos Renomeados com Qtd)
 # ==============================================================================
 with tab_carretas:
-    st.subheader("Blocos do Pátio")
+    st.subheader("Blocos do Pátio (Qtd)")
     df_c = carregar_dados("Patio_Programacao")
     
     if not df_c.empty:
         ultima_linha = df_c.iloc[-1]
         
-        # Mapeamento para visual de blocos (Cartões)
+        # Mapeamento com os nomes exatos solicitados e a métrica correspondente
         blocos = [
-            ("Pátio Total (Agendamento)", ultima_linha.get('PATIO_TOTAL', 0), "#6c757d"),
-            ("Fila Triagem (Checklist)", ultima_linha.get('FILA_TRIAGEM', 0), "#ffc107"),
-            ("Apoio / Bloqueados", ultima_linha.get('BLOQUEADOS', 0), "#dc3545"),
-            ("Fila de Carregamento", ultima_linha.get('EM_CARREGAMENTO', 0), "#0d6efd"),
-            ("Termo / Liberados", ultima_linha.get('LIBERADOS_EXPEDICAO', 0), "#198754"),
+            ("Programado (Pátio Total)", ultima_linha.get('PATIO_TOTAL', 0), "#6c757d"),
+            ("Checklist (Fila Triagem)", ultima_linha.get('FILA_TRIAGEM', 0), "#ffc107"),
+            ("Apoio (Bloqueados)", ultima_linha.get('BLOQUEADOS', 0), "#dc3545"),
+            ("Fila (Em Carregamento)", ultima_linha.get('EM_CARREGAMENTO', 0), "#0d6efd"),
+            ("Termo (Liberados)", ultima_linha.get('LIBERADOS_EXPEDICAO', 0), "#198754"),
         ]
         
         for nome, valor, cor in blocos:
@@ -102,6 +101,9 @@ with tab_carretas:
                     <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1rem; color: #fff;">
                         <span>{nome}</span>
                         <span style="color: {cor};">{valor} </span>
+                    </div>
+                    <div style="color:#a0a0a0; font-size:0.85rem; margin-top:3px;">
+                        *Soma em Toneladas indisponível nesta aba do Core.
                     </div>
                 </div>
             """, unsafe_allow_html=True)
@@ -119,7 +121,6 @@ with tab_prod_exp:
     if not df_p.empty:
         ultima_p = df_p.iloc[-1]
         
-        # Correção do erro ValueError usando a função segura
         prod_hj = safe_to_numeric(ultima_p.get('PROD_HOJE', 0))
         vol_hj = safe_to_numeric(ultima_p.get('VOL_HOJE', 0))
         est_tot = safe_to_numeric(ultima_p.get('ESTOQUE_TOTAL', 0))
@@ -128,18 +129,19 @@ with tab_prod_exp:
         c1.metric("Produção Hoje", f"{prod_hj:,.1f} t")
         c2.metric("Volume Expedido", f"{vol_hj:,.1f} t")
         
-        st.metric("Estoque Total de Pátio", f"{est_tot:,.1f} t")
+        st.metric("Estoque Total", f"{est_tot:,.1f} t")
         
+        # Gráfico triplo: Produção, Expedição e Estoque Total
         df_comp = pd.DataFrame({
-            "Métrica": ["Produção", "Expedição"],
-            "Toneladas": [prod_hj, vol_hj]
+            "Métrica": ["Produção", "Expedição", "Estoque Total"],
+            "Toneladas": [prod_hj, vol_hj, est_tot]
         })
         chart_comp = alt.Chart(df_comp).mark_bar(cornerRadius=4).encode(
-            x=alt.X("Métrica:N", title=""),
+            x=alt.X("Métrica:N", sort=None, title=""),
             y=alt.Y("Toneladas:Q", title="Toneladas"),
-            color=alt.Color("Métrica:N", scale=alt.Scale(range=["#0d6efd", "#20c997"]), legend=None),
+            color=alt.Color("Métrica:N", scale=alt.Scale(range=["#20c997", "#0d6efd", "#ffc107"]), legend=None),
             tooltip=["Métrica", "Toneladas"]
-        ).properties(height=220)
+        ).properties(height=260)
         st.altair_chart(chart_comp, use_container_width=True)
     else:
         st.info("Aba Expedicao_Producao indisponível.")
@@ -206,7 +208,6 @@ with tab_frota_glp:
             df_g["DATA_DT"] = pd.to_datetime(df_glp.iloc[:, 2].astype(str).str.strip(), format="%d/%m/%Y", errors="coerce")
             df_g["MES_ANO"] = df_g["DATA_DT"].dt.strftime("%m/%Y")
             df_g["MAQUINA"] = df_glp.iloc[:, 5].astype(str).str.strip()
-            # Uso da função segura também no GLP
             df_g["KG_NUM"] = df_glp.iloc[:, 7].apply(safe_to_numeric)
             
             meses_disp = df_g["MES_ANO"].dropna().unique().tolist()
