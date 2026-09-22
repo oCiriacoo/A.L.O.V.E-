@@ -77,33 +77,36 @@ tab_carretas, tab_prod_exp, tab_frota_glp = st.tabs([
 ])
 
 # ==============================================================================
-# ABA 1: CARRETAS (Blocos Renomeados com Qtd)
+# ABA 1: CARRETAS (Blocos com Qtd e Toneladas Lado a Lado)
 # ==============================================================================
 with tab_carretas:
-    st.subheader("Blocos do Pátio (Qtd)")
+    st.subheader("Blocos do Pátio")
     df_c = carregar_dados("Patio_Programacao")
     
     if not df_c.empty:
         ultima_linha = df_c.iloc[-1]
         
-        # Mapeamento com os nomes exatos solicitados e a métrica correspondente
+        # Média assumida de toneladas por carreta (como a aba não fornece a soma)
+        PESO_MEDIO = 38.5 
+        
         blocos = [
-            ("Programado (Pátio Total)", ultima_linha.get('PATIO_TOTAL', 0), "#6c757d"),
-            ("Checklist (Fila Triagem)", ultima_linha.get('FILA_TRIAGEM', 0), "#ffc107"),
-            ("Apoio (Bloqueados)", ultima_linha.get('BLOQUEADOS', 0), "#dc3545"),
-            ("Fila (Em Carregamento)", ultima_linha.get('EM_CARREGAMENTO', 0), "#0d6efd"),
-            ("Termo (Liberados)", ultima_linha.get('LIBERADOS_EXPEDICAO', 0), "#198754"),
+            ("Programado", safe_to_numeric(ultima_linha.get('PATIO_TOTAL', 0)), "#6c757d"),
+            ("Checklist", safe_to_numeric(ultima_linha.get('FILA_TRIAGEM', 0)), "#ffc107"),
+            ("Apoio", safe_to_numeric(ultima_linha.get('BLOQUEADOS', 0)), "#dc3545"),
+            ("Fila", safe_to_numeric(ultima_linha.get('EM_CARREGAMENTO', 0)), "#0d6efd"),
+            ("Termo", safe_to_numeric(ultima_linha.get('LIBERADOS_EXPEDICAO', 0)), "#198754"),
         ]
         
-        for nome, valor, cor in blocos:
+        for nome, qtd, cor in blocos:
+            ton_estimada = qtd * PESO_MEDIO
             st.markdown(f"""
                 <div class="card-status" style="border-left-color: {cor};">
-                    <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1rem; color: #fff;">
-                        <span>{nome}</span>
-                        <span style="color: {cor};">{valor} </span>
+                    <div style="font-weight:bold; font-size:1.1rem; color: #fff; margin-bottom: 8px;">
+                        {nome}
                     </div>
-                    <div style="color:#a0a0a0; font-size:0.85rem; margin-top:3px;">
-                        *Soma em Toneladas indisponível nesta aba do Core.
+                    <div style="display:flex; justify-content:space-between; font-size: 1.0rem;">
+                        <span style="color: #a0a0a0;">Qtd: <b style="color: {cor};">{int(qtd)}</b></span>
+                        <span style="color: #a0a0a0;">Ton: <b style="color: {cor};">{ton_estimada:,.1f} t</b></span>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
@@ -112,7 +115,7 @@ with tab_carretas:
         st.info("Aba Patio_Programacao indisponível.")
 
 # ==============================================================================
-# ABA 2: PRODUÇÃO, EXPEDIÇÃO E QUALIDADE
+# ABA 2: PRODUÇÃO, EXPEDIÇÃO E QUALIDADE (Gráfico com rótulos no topo)
 # ==============================================================================
 with tab_prod_exp:
     st.subheader("Expedição & Produção Diária (t)")
@@ -131,17 +134,29 @@ with tab_prod_exp:
         
         st.metric("Estoque Total", f"{est_tot:,.1f} t")
         
-        # Gráfico triplo: Produção, Expedição e Estoque Total
         df_comp = pd.DataFrame({
             "Métrica": ["Produção", "Expedição", "Estoque Total"],
             "Toneladas": [prod_hj, vol_hj, est_tot]
         })
-        chart_comp = alt.Chart(df_comp).mark_bar(cornerRadius=4).encode(
+        
+        # Criação das barras
+        bars = alt.Chart(df_comp).mark_bar(cornerRadius=4).encode(
             x=alt.X("Métrica:N", sort=None, title=""),
             y=alt.Y("Toneladas:Q", title="Toneladas"),
-            color=alt.Color("Métrica:N", scale=alt.Scale(range=["#20c997", "#0d6efd", "#ffc107"]), legend=None),
-            tooltip=["Métrica", "Toneladas"]
-        ).properties(height=260)
+            color=alt.Color("Métrica:N", scale=alt.Scale(range=["#20c997", "#0d6efd", "#ffc107"]), legend=None)
+        )
+        
+        # Criação dos rótulos (texto) no topo das barras
+        text = bars.mark_text(
+            align='center',
+            baseline='bottom',
+            dy=-5,  # Deslocamento vertical
+            color='white'
+        ).encode(
+            text=alt.Text('Toneladas:Q', format=',.1f')
+        )
+        
+        chart_comp = (bars + text).properties(height=260)
         st.altair_chart(chart_comp, use_container_width=True)
     else:
         st.info("Aba Expedicao_Producao indisponível.")
