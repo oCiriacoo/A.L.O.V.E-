@@ -57,20 +57,26 @@ def carregar_dados(worksheet_name: str, cabecalho=0):
         return pd.DataFrame()
 
 def safe_to_numeric(val):
-    try:
-        if isinstance(val, (int, float)): return float(val)
-        v = str(val).replace(".", "").replace(",", ".")
-        return float(v)
-    except:
+    if pd.isna(val):
         return 0.0
-
-col_title, col_ref = st.columns([3, 1])
-with col_title:
-    st.markdown("### 🚛 A.L.O.V.E. Mobile")
-with col_ref:
-    if st.button("🔄 Atualizar"):
-        st.cache_data.clear()
-        st.rerun()
+    
+    # Se já for um número (int ou float), devolve diretamente
+    if isinstance(val, (int, float)):
+        return float(val)
+        
+    try:
+        s_val = str(val).strip()
+        if not s_val:
+            return 0.0
+            
+        # Se contiver uma vírgula, assume o formato PT-BR (ex: 3.580,0)
+        if "," in s_val:
+            s_val = s_val.replace(".", "")  # remove os pontos dos milhares
+            s_val = s_val.replace(",", ".") # transforma a vírgula em ponto decimal
+            
+        return float(s_val)
+    except Exception:
+        return 0.0
 
 tab_carretas, tab_prod_exp, tab_frota_glp = st.tabs([
     "🚚 Carretas",
