@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime
 import urllib.parse
 import altair as alt
+import json
 
 st.set_page_config(
     page_title="A.L.O.V.E. Mobile",
@@ -57,6 +58,7 @@ def carregar_dados(worksheet_name: str, cabecalho=0):
 
 def safe_to_numeric(val):
     try:
+        if isinstance(val, (int, float)): return float(val)
         v = str(val).replace(".", "").replace(",", ".")
         return float(v)
     except:
@@ -77,28 +79,47 @@ tab_carretas, tab_prod_exp, tab_frota_glp = st.tabs([
 ])
 
 # ==============================================================================
-# ABA 1: CARRETAS (Blocos com Qtd e Toneladas Lado a Lado)
+# 🔥 LEITURA DIRETA DO CACHE DO A.L.O.V.E CORE
+# ==============================================================================
+df_cache = carregar_dados("Cache_Painel", cabecalho=0)
+cache_dict = {}
+if not df_cache.empty:
+    for _, row in df_cache.iterrows():
+        chave = str(row.iloc[0]).strip()
+        valor = str(row.iloc[1]).strip()
+        cache_dict[chave] = valor
+
+# Extração dos JSONs salvos pelo robô
+dados_patio = {}
+qualidade = {}
+try: dados_patio = json.loads(cache_dict.get("dados_patio", "{}"))
+except: pass
+try: qualidade = json.loads(cache_dict.get("qualidade", "{}"))
+except: pass
+
+vol_hoje = safe_to_numeric(cache_dict.get("vol_hoje", 0))
+estoque_total = safe_to_numeric(cache_dict.get("estoque_total", 0))
+
+prod_ms1 = safe_to_numeric(qualidade.get("MS1", {}).get("producao", 0))
+prod_ms2 = safe_to_numeric(qualidade.get("MS2", {}).get("producao", 0))
+prod_hoje = prod_ms1 + prod_ms2
+
+# ==============================================================================
+# ABA 1: CARRETAS (Blocos com Qtd e Toneladas Lado a Lado REAIS)
 # ==============================================================================
 with tab_carretas:
     st.subheader("Blocos do Pátio")
-    df_c = carregar_dados("Patio_Programacao")
     
-    if not df_c.empty:
-        ultima_linha = df_c.iloc[-1]
-        
-        # Média assumida de toneladas por carreta (como a aba não fornece a soma)
-        PESO_MEDIO = 38.5 
-        
+    if dados_patio:
         blocos = [
-            ("Programado", safe_to_numeric(ultima_linha.get('PATIO_TOTAL', 0)), "#6c757d"),
-            ("Checklist", safe_to_numeric(ultima_linha.get('FILA_TRIAGEM', 0)), "#ffc107"),
-            ("Apoio", safe_to_numeric(ultima_linha.get('BLOQUEADOS', 0)), "#dc3545"),
-            ("Fila", safe_to_numeric(ultima_linha.get('EM_CARREGAMENTO', 0)), "#0d6efd"),
-            ("Termo", safe_to_numeric(ultima_linha.get('LIBERADOS_EXPEDICAO', 0)), "#198754"),
+            ("Programado", dados_patio.get('PR', {}).get('veiculos', 0), dados_patio.get('PR', {}).get('peso', 0.0), "#6c757d"),
+            ("Checklist", dados_patio.get('00', {}).get('veiculos', 0), dados_patio.get('00', {}).get('peso', 0.0), "#ffc107"),
+            ("Apoio", dados_patio.get('01', {}).get('veiculos', 0), dados_patio.get('01', {}).get('peso', 0.0), "#dc3545"),
+            ("Fila", dados_patio.get('FC', {}).get('veiculos', 0), dados_patio.get('FC', {}).get('peso', 0.0), "#0d6efd"),
+            ("Termo", dados_patio.get('TR', {}).get('veiculos', 0), dados_patio.get('TR', {}).get('peso', 0.0), "#198754"),
         ]
         
-        for nome, qtd, cor in blocos:
-            ton_estimada = qtd * PESO_MEDIO
+        for nome, qtd, ton_real, cor in blocos:
             st.markdown(f"""
                 <div class="card-status" style="border-left-color: {cor};">
                     <div style="font-weight:bold; font-size:1.1rem; color: #fff; margin-bottom: 8px;">
@@ -106,75 +127,68 @@ with tab_carretas:
                     </div>
                     <div style="display:flex; justify-content:space-between; font-size: 1.0rem;">
                         <span style="color: #a0a0a0;">Qtd: <b style="color: {cor};">{int(qtd)}</b></span>
-                        <span style="color: #a0a0a0;">Ton: <b style="color: {cor};">{ton_estimada:,.1f} t</b></span>
+                        <span style="color: #a0a0a0;">Ton: <b style="color: {cor};">{ton_real:,.1f} t</b></span>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
             
     else:
-        st.info("Aba Patio_Programacao indisponível.")
+        st.info("Aba Cache_Painel (dados_patio) indisponível.")
 
 # ==============================================================================
-# ABA 2: PRODUÇÃO, EXPEDIÇÃO E QUALIDADE (Gráfico com rótulos no topo)
+# ABA 2: PRODUÇÃO, EXPEDIÇÃO E QUALIDADE
 # ==============================================================================
 with tab_prod_exp:
     st.subheader("Expedição & Produção Diária (t)")
-    df_p = carregar_dados("Expedicao_Producao")
     
-    if not df_p.empty:
-        ultima_p = df_p.iloc[-1]
-        
-        prod_hj = safe_to_numeric(ultima_p.get('PROD_HOJE', 0))
-        vol_hj = safe_to_numeric(ultima_p.get('VOL_HOJE', 0))
-        est_tot = safe_to_numeric(ultima_p.get('ESTOQUE_TOTAL', 0))
-        
-        c1, c2 = st.columns(2)
-        c1.metric("Produção Hoje", f"{prod_hj:,.1f} t")
-        c2.metric("Volume Expedido", f"{vol_hj:,.1f} t")
-        
-        st.metric("Estoque Total", f"{est_tot:,.1f} t")
-        
-        df_comp = pd.DataFrame({
-            "Métrica": ["Produção", "Expedição", "Estoque Total"],
-            "Toneladas": [prod_hj, vol_hj, est_tot]
-        })
-        
-        # Criação das barras
-        bars = alt.Chart(df_comp).mark_bar(cornerRadius=4).encode(
-            x=alt.X("Métrica:N", sort=None, title=""),
-            y=alt.Y("Toneladas:Q", title="Toneladas"),
-            color=alt.Color("Métrica:N", scale=alt.Scale(range=["#20c997", "#0d6efd", "#ffc107"]), legend=None)
-        )
-        
-        # Criação dos rótulos (texto) no topo das barras
-        text = bars.mark_text(
-            align='center',
-            baseline='bottom',
-            dy=-5,  # Deslocamento vertical
-            color='white'
-        ).encode(
-            text=alt.Text('Toneladas:Q', format=',.1f')
-        )
-        
-        chart_comp = (bars + text).properties(height=260)
-        st.altair_chart(chart_comp, use_container_width=True)
-    else:
-        st.info("Aba Expedicao_Producao indisponível.")
+    c1, c2 = st.columns(2)
+    c1.metric("Produção Hoje", f"{prod_hoje:,.1f} t")
+    c2.metric("Volume Expedido", f"{vol_hoje:,.1f} t")
+    st.metric("Estoque Total", f"{estoque_total:,.1f} t")
+    
+    df_comp = pd.DataFrame({
+        "Métrica": ["Produção", "Expedição", "Estoque Total"],
+        "Toneladas": [prod_hoje, vol_hoje, estoque_total]
+    })
+    
+    # Aumentar a escala (domain) para garantir espaço em branco no topo para os textos
+    max_ton = max(df_comp["Toneladas"]) if not df_comp.empty else 100
+    
+    bars = alt.Chart(df_comp).mark_bar(cornerRadius=4).encode(
+        x=alt.X("Métrica:N", sort=None, title=""),
+        y=alt.Y("Toneladas:Q", title="Toneladas", scale=alt.Scale(domain=[0, max_ton * 1.25])),
+        color=alt.Color("Métrica:N", scale=alt.Scale(range=["#20c997", "#0d6efd", "#ffc107"]), legend=None)
+    )
+    
+    text = bars.mark_text(
+        align='center',
+        baseline='bottom',
+        dy=-5, 
+        color='white'
+    ).encode(
+        text=alt.Text('Toneladas:Q', format=',.1f')
+    )
+    
+    chart_comp = (bars + text).properties(height=280)
+    st.altair_chart(chart_comp, use_container_width=True)
 
     st.write("---")
-    st.subheader("Indicadores de Qualidade (Humidade)")
-    df_q = carregar_dados("Qualidade_MS")
-    if not df_q.empty:
-        ultima_q = df_q.iloc[-1]
-        
-        q1, q2 = st.columns(2)
-        umid_l1 = safe_to_numeric(ultima_q.get('UMIDADE_L1', 0))
-        umid_l2 = safe_to_numeric(ultima_q.get('UMIDADE_L2', 0))
-        
-        q1.metric("Umidade L1", f"{umid_l1:.2f}%" if umid_l1 else "-")
-        q2.metric("Umidade L2", f"{umid_l2:.2f}%" if umid_l2 else "-")
+    st.subheader("Indicadores de Qualidade")
+    
+    if qualidade:
+        for maq in ["MS1", "MS2"]:
+            st.markdown(f"**{maq}** (MAT: {qualidade.get(maq, {}).get('material', '--')})")
+            q_suj = qualidade.get(maq, {}).get('sujidade', 0.0)
+            q_visc = qualidade.get(maq, {}).get('viscosidade', 0.0)
+            q_teor = qualidade.get(maq, {}).get('teor', 0.0)
+            
+            c_q1, c_q2, c_q3 = st.columns(3)
+            c_q1.metric("Sujidade", f"{q_suj:.2f}")
+            c_q2.metric("Viscosidade", f"{q_visc:,.0f}")
+            c_q3.metric("Teor Seco", f"{q_teor:.2f}%")
+            st.write("")
     else:
-        st.info("Aba Qualidade_MS indisponível.")
+        st.info("Aba Cache_Painel (qualidade) indisponível.")
 
 # ==============================================================================
 # ABA 3: FROTA & GLP
