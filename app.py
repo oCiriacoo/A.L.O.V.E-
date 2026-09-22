@@ -69,8 +69,13 @@ def safe_to_numeric(val):
     except Exception:
         return 0.0
 
+def forcar_par(valor):
+    val_int = int(round(float(valor or 0)))
+    if val_int % 2 != 0: val_int += 1
+    return float(val_int)
+
 # ==============================================================================
-# 🔥 LEITURA DOS DADOS DA NUVEM
+# 🔥 LEITURA DOS DADOS DA NUVEM (CACHE_PAINEL)
 # ==============================================================================
 df_cache = carregar_dados("Cache_Painel", cabecalho=0)
 cache_dict = {}
@@ -96,14 +101,39 @@ prod_ms1 = safe_to_numeric(qualidade.get("MS1", {}).get("producao", 0))
 prod_ms2 = safe_to_numeric(qualidade.get("MS2", {}).get("producao", 0))
 prod_hoje = prod_ms1 + prod_ms2
 
-# 👉 BUSCAR PREVISÕES DIRETAMENTE DA ABA EXPEDIÇÃO_PRODUÇÃO
-df_exp = carregar_dados("Expedicao_Producao")
-prev_prod = 0.0
-prev_carr = 0.0
-if not df_exp.empty:
-    ultima_exp = df_exp.iloc[-1]
-    prev_prod = safe_to_numeric(ultima_exp.get("PREV_PROD", 0))
-    prev_carr = safe_to_numeric(ultima_exp.get("PREV_CARR", 0))
+# ==============================================================================
+# 🧠 CÁLCULO DINÂMICO DE PREVISÃO (IGUAL AO MOTOR DO ALOV CORE)
+# ==============================================================================
+agora = datetime.now()
+
+# 1. Previsão de Produção
+horas_passadas_prod = max(0.1, agora.hour + (agora.minute / 60.0))
+prev_prod = forcar_par((prod_hoje / horas_passadas_prod) * 24)
+
+# 2. Previsão de Expedição
+dia_semana = agora.weekday()
+horas_produtivas = 0.0
+for h in range(agora.hour, 24):
+    fracao = 1.0 if h > agora.hour else (1.0 - (agora.minute / 60.0))
+    fator = 6.25 / 8.0
+    if 0 <= h < 8 and dia_semana in (0, 6):
+        fator = 0.0
+    horas_produtivas += fracao * fator
+
+cap_maxima_restante = horas_produtivas * 500.0
+vol_patio = 0.0
+if dados_patio:
+    vol_patio += dados_patio.get("PR", {}).get("peso", 0.0)
+    vol_patio += dados_patio.get("00", {}).get("peso", 0.0)
+    vol_patio += dados_patio.get("01", {}).get("peso", 0.0)
+    vol_patio += dados_patio.get("FC", {}).get("peso", 0.0)
+
+projecao_real = min(cap_maxima_restante, vol_patio)
+prev_carr = forcar_par(vol_hoje + projecao_real)
+
+# Salvaguarda visual
+prev_prod = max(prev_prod, prod_hoje)
+prev_carr = max(prev_carr, vol_hoje)
 
 # ==============================================================================
 # CABEÇALHO COM ÚLTIMA ATUALIZAÇÃO E OBSERVAÇÕES
@@ -169,7 +199,7 @@ with tab_carretas:
         st.info("Aba Cache_Painel (dados_patio) indisponível.")
 
 # ==============================================================================
-# ABA 2: PRODUÇÃO, EXPEDIÇÃO E QUALIDADE (COM PREVISÕES AZUIS)
+# ABA 2: PRODUÇÃO, EXPEDIÇÃO E QUALIDADE
 # ==============================================================================
 with tab_prod_exp:
     st.subheader("Expedição & Produção Diária (t)")
@@ -177,11 +207,9 @@ with tab_prod_exp:
     c1, c2 = st.columns(2)
     with c1:
         st.metric("Produção Hoje", f"{prod_hoje:,.1f} t")
-        # 👉 PREVISÃO EM AZUL
         st.markdown(f"<div style='color: #3498DB; font-weight: 600; font-size: 0.95rem; margin-top: -15px;'>Prev: {prev_prod:,.1f} t</div>", unsafe_allow_html=True)
     with c2:
         st.metric("Volume Expedido", f"{vol_hoje:,.1f} t")
-        # 👉 PREVISÃO EM AZUL
         st.markdown(f"<div style='color: #3498DB; font-weight: 600; font-size: 0.95rem; margin-top: -15px;'>Prev: {prev_carr:,.1f} t</div>", unsafe_allow_html=True)
         
     st.write("")
