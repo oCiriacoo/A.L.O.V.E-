@@ -151,7 +151,6 @@ with tab_prod_exp:
         "Toneladas": [prod_hoje, vol_hoje, estoque_total]
     })
     
-    # Aumentar a escala (domain) para garantir espaço em branco no topo para os textos
     max_ton = max(df_comp["Toneladas"]) if not df_comp.empty else 100
     
     bars = alt.Chart(df_comp).mark_bar(cornerRadius=4).encode(
@@ -183,9 +182,25 @@ with tab_prod_exp:
             q_teor = qualidade.get(maq, {}).get('teor', 0.0)
             
             c_q1, c_q2, c_q3 = st.columns(3)
-            c_q1.metric("Sujidade", f"{q_suj:.2f}")
-            c_q2.metric("Viscosidade", f"{q_visc:,.0f}")
-            c_q3.metric("Teor Seco", f"{q_teor:.2f}%")
+            
+            # Coluna 1: Sujidade
+            with c_q1:
+                st.markdown(f"<div style='font-size: 1rem; color: #a0a0a0;'>Sujidade</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='font-size: 1.4rem;'>{q_suj:.2f}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='font-size: 0.75rem; color: #6c757d; margin-top: -5px;'>Máx: 2.5</div>", unsafe_allow_html=True)
+            
+            # Coluna 2: Viscosidade
+            with c_q2:
+                st.markdown(f"<div style='font-size: 1rem; color: #a0a0a0;'>Viscosidade</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='font-size: 1.4rem;'>{q_visc:,.0f}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='font-size: 0.75rem; color: #6c757d; margin-top: -5px;'>Mín: 650</div>", unsafe_allow_html=True)
+
+            # Coluna 3: Teor Seco
+            with c_q3:
+                st.markdown(f"<div style='font-size: 1rem; color: #a0a0a0;'>Teor Seco</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='font-size: 1.4rem;'>{q_teor:.2f}%</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='font-size: 0.75rem; color: #6c757d; margin-top: -5px;'>Mín: 88.5%</div>", unsafe_allow_html=True)
+
             st.write("")
     else:
         st.info("Aba Cache_Painel (qualidade) indisponível.")
