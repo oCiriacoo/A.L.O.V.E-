@@ -12,7 +12,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Aumentei o padding-top de 0.8rem para 3.5rem para "dar os enters" e descer tudo
 st.markdown("""
     <style>
         .block-container {
@@ -71,7 +70,7 @@ def safe_to_numeric(val):
         return 0.0
 
 # ==============================================================================
-# 🔥 LEITURA DIRETA DO CACHE DO A.L.O.V.E CORE
+# 🔥 LEITURA DOS DADOS DA NUVEM
 # ==============================================================================
 df_cache = carregar_dados("Cache_Painel", cabecalho=0)
 cache_dict = {}
@@ -91,13 +90,23 @@ except: pass
 vol_hoje = safe_to_numeric(cache_dict.get("vol_hoje", 0))
 estoque_total = safe_to_numeric(cache_dict.get("estoque_total", 0))
 ultima_att = cache_dict.get("ultima_atualizacao", "Desconhecida")
+observacoes = cache_dict.get("observacoes", "")
 
 prod_ms1 = safe_to_numeric(qualidade.get("MS1", {}).get("producao", 0))
 prod_ms2 = safe_to_numeric(qualidade.get("MS2", {}).get("producao", 0))
 prod_hoje = prod_ms1 + prod_ms2
 
+# 👉 BUSCAR PREVISÕES DIRETAMENTE DA ABA EXPEDIÇÃO_PRODUÇÃO
+df_exp = carregar_dados("Expedicao_Producao")
+prev_prod = 0.0
+prev_carr = 0.0
+if not df_exp.empty:
+    ultima_exp = df_exp.iloc[-1]
+    prev_prod = safe_to_numeric(ultima_exp.get("PREV_PROD", 0))
+    prev_carr = safe_to_numeric(ultima_exp.get("PREV_CARR", 0))
+
 # ==============================================================================
-# CABEÇALHO REPOSICIONADO COM DATA/HORA
+# CABEÇALHO COM ÚLTIMA ATUALIZAÇÃO E OBSERVAÇÕES
 # ==============================================================================
 col_title, col_ref = st.columns([2.5, 1])
 with col_title:
@@ -109,7 +118,21 @@ with col_ref:
         st.cache_data.clear()
         st.rerun()
 
-st.write("") # Mais um pequeno espaço antes das abas
+# Lógica das Cores da Observação
+if observacoes and observacoes.strip() != "" and observacoes.strip() != "None":
+    if "Normal" in observacoes:
+        cor_bg, cor_border, cor_txt = "#0d2417", "#00D672", "#00D672"
+    else:
+        cor_bg, cor_border, cor_txt = "#2b1111", "#E74C3C", "#ff9999"
+        
+    st.markdown(f"""
+        <div style="background-color: {cor_bg}; border-left: 4px solid {cor_border}; padding: 12px; margin-bottom: 15px; border-radius: 4px;">
+            <h4 style="color: {cor_border}; margin: 0 0 6px 0; font-size: 14px;">📋 Observações Operacionais</h4>
+            <div style="color: {cor_txt}; font-size: 13px; font-weight: 500; white-space: pre-wrap;">{observacoes}</div>
+        </div>
+    """, unsafe_allow_html=True)
+
+st.write("") 
 
 tab_carretas, tab_prod_exp, tab_frota_glp = st.tabs([
     "🚚 Carretas",
@@ -122,7 +145,6 @@ tab_carretas, tab_prod_exp, tab_frota_glp = st.tabs([
 # ==============================================================================
 with tab_carretas:
     st.subheader("Blocos do Pátio")
-    
     if dados_patio:
         blocos = [
             ("Programado", dados_patio.get('PR', {}).get('veiculos', 0), dados_patio.get('PR', {}).get('peso', 0.0), "#6c757d"),
@@ -131,7 +153,6 @@ with tab_carretas:
             ("Fila", dados_patio.get('FC', {}).get('veiculos', 0), dados_patio.get('FC', {}).get('peso', 0.0), "#0d6efd"),
             ("Termo", dados_patio.get('TR', {}).get('veiculos', 0), dados_patio.get('TR', {}).get('peso', 0.0), "#198754"),
         ]
-        
         for nome, qtd, ton_real, cor in blocos:
             st.markdown(f"""
                 <div class="card-status" style="border-left-color: {cor};">
@@ -148,14 +169,22 @@ with tab_carretas:
         st.info("Aba Cache_Painel (dados_patio) indisponível.")
 
 # ==============================================================================
-# ABA 2: PRODUÇÃO, EXPEDIÇÃO E QUALIDADE
+# ABA 2: PRODUÇÃO, EXPEDIÇÃO E QUALIDADE (COM PREVISÕES AZUIS)
 # ==============================================================================
 with tab_prod_exp:
     st.subheader("Expedição & Produção Diária (t)")
     
     c1, c2 = st.columns(2)
-    c1.metric("Produção Hoje", f"{prod_hoje:,.1f} t")
-    c2.metric("Volume Expedido", f"{vol_hoje:,.1f} t")
+    with c1:
+        st.metric("Produção Hoje", f"{prod_hoje:,.1f} t")
+        # 👉 PREVISÃO EM AZUL
+        st.markdown(f"<div style='color: #3498DB; font-weight: 600; font-size: 0.95rem; margin-top: -15px;'>Prev: {prev_prod:,.1f} t</div>", unsafe_allow_html=True)
+    with c2:
+        st.metric("Volume Expedido", f"{vol_hoje:,.1f} t")
+        # 👉 PREVISÃO EM AZUL
+        st.markdown(f"<div style='color: #3498DB; font-weight: 600; font-size: 0.95rem; margin-top: -15px;'>Prev: {prev_carr:,.1f} t</div>", unsafe_allow_html=True)
+        
+    st.write("")
     st.metric("Estoque Total", f"{estoque_total:,.1f} t")
     
     df_comp = pd.DataFrame({
@@ -164,28 +193,19 @@ with tab_prod_exp:
     })
     
     max_ton = max(df_comp["Toneladas"]) if not df_comp.empty else 100
-    
     bars = alt.Chart(df_comp).mark_bar(cornerRadius=4).encode(
         x=alt.X("Métrica:N", sort=None, title=""),
         y=alt.Y("Toneladas:Q", title="Toneladas", scale=alt.Scale(domain=[0, max_ton * 1.25])),
         color=alt.Color("Métrica:N", scale=alt.Scale(range=["#20c997", "#0d6efd", "#ffc107"]), legend=None)
     )
-    
-    text = bars.mark_text(
-        align='center',
-        baseline='bottom',
-        dy=-5, 
-        color='white'
-    ).encode(
+    text = bars.mark_text(align='center', baseline='bottom', dy=-5, color='white').encode(
         text=alt.Text('Toneladas:Q', format=',.1f')
     )
-    
     chart_comp = (bars + text).properties(height=280)
     st.altair_chart(chart_comp, use_container_width=True)
 
     st.write("---")
     st.subheader("Indicadores de Qualidade")
-    
     if qualidade:
         for maq in ["MS1", "MS2"]:
             st.markdown(f"**{maq}** (MAT: {qualidade.get(maq, {}).get('material', '--')})")
@@ -194,22 +214,18 @@ with tab_prod_exp:
             q_teor = qualidade.get(maq, {}).get('teor', 0.0)
             
             c_q1, c_q2, c_q3 = st.columns(3)
-            
             with c_q1:
                 st.markdown(f"<div style='font-size: 1rem; color: #a0a0a0;'>Sujidade</div>", unsafe_allow_html=True)
                 st.markdown(f"<div style='font-size: 1.4rem;'>{q_suj:.2f}</div>", unsafe_allow_html=True)
                 st.markdown(f"<div style='font-size: 0.75rem; color: #6c757d; margin-top: -5px;'>Máx: 2.5</div>", unsafe_allow_html=True)
-            
             with c_q2:
                 st.markdown(f"<div style='font-size: 1rem; color: #a0a0a0;'>Viscosidade</div>", unsafe_allow_html=True)
                 st.markdown(f"<div style='font-size: 1.4rem;'>{q_visc:,.0f}</div>", unsafe_allow_html=True)
                 st.markdown(f"<div style='font-size: 0.75rem; color: #6c757d; margin-top: -5px;'>Mín: 650</div>", unsafe_allow_html=True)
-
             with c_q3:
                 st.markdown(f"<div style='font-size: 1rem; color: #a0a0a0;'>Teor Seco</div>", unsafe_allow_html=True)
                 st.markdown(f"<div style='font-size: 1.4rem;'>{q_teor:.2f}%</div>", unsafe_allow_html=True)
                 st.markdown(f"<div style='font-size: 0.75rem; color: #6c757d; margin-top: -5px;'>Mín: 88.5%</div>", unsafe_allow_html=True)
-
             st.write("")
     else:
         st.info("Aba Cache_Painel (qualidade) indisponível.")
