@@ -69,11 +69,6 @@ def safe_to_numeric(val):
     except Exception:
         return 0.0
 
-def forcar_par(valor):
-    val_int = int(round(float(valor or 0)))
-    if val_int % 2 != 0: val_int += 1
-    return float(val_int)
-
 # ==============================================================================
 # 🔥 LEITURA DOS DADOS DA NUVEM (CACHE_PAINEL)
 # ==============================================================================
@@ -102,34 +97,22 @@ prod_ms2 = safe_to_numeric(qualidade.get("MS2", {}).get("producao", 0))
 prod_hoje = prod_ms1 + prod_ms2
 
 # ==============================================================================
-# 🧠 CÁLCULO DINÂMICO DE PREVISÃO (IGUAL AO MOTOR DO ALOV CORE)
+# 🧠 LEITURA DINÂMICA DE PREVISÃO DA ABA EXPEDICAO_PRODUCAO
 # ==============================================================================
-agora = datetime.now()
+# Lemos os dados calculados pelo Core na aba Expedicao_Producao
+df_exp = carregar_dados("Expedicao_Producao", cabecalho=0)
+prev_prod = 0.0
+prev_carr = 0.0
 
-# 1. Previsão de Produção
-horas_passadas_prod = max(0.1, agora.hour + (agora.minute / 60.0))
-prev_prod = forcar_par((prod_hoje / horas_passadas_prod) * 24)
-
-# 2. Previsão de Expedição
-dia_semana = agora.weekday()
-horas_produtivas = 0.0
-for h in range(agora.hour, 24):
-    fracao = 1.0 if h > agora.hour else (1.0 - (agora.minute / 60.0))
-    fator = 6.25 / 8.0
-    if 0 <= h < 8 and dia_semana in (0, 6):
-        fator = 0.0
-    horas_produtivas += fracao * fator
-
-cap_maxima_restante = horas_produtivas * 500.0
-vol_patio = 0.0
-if dados_patio:
-    vol_patio += dados_patio.get("PR", {}).get("peso", 0.0)
-    vol_patio += dados_patio.get("00", {}).get("peso", 0.0)
-    vol_patio += dados_patio.get("01", {}).get("peso", 0.0)
-    vol_patio += dados_patio.get("FC", {}).get("peso", 0.0)
-
-projecao_real = min(cap_maxima_restante, vol_patio)
-prev_carr = forcar_par(vol_hoje + projecao_real)
+if not df_exp.empty:
+    ultima_exp = df_exp.iloc[-1]
+    
+    # Procuramos os nomes exatos das colunas (PREV_PROD e PREV_CARR)
+    col_prev_prod = next((c for c in df_exp.columns if "PREV_PROD" in str(c).upper()), None)
+    col_prev_carr = next((c for c in df_exp.columns if "PREV_CARR" in str(c).upper()), None)
+    
+    if col_prev_prod: prev_prod = safe_to_numeric(ultima_exp[col_prev_prod])
+    if col_prev_carr: prev_carr = safe_to_numeric(ultima_exp[col_prev_carr])
 
 # Salvaguarda visual
 prev_prod = max(prev_prod, prod_hoje)
