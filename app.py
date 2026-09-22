@@ -20,6 +20,14 @@ st.markdown("""
             padding-right: 0.8rem;
         }
         div[data-testid="stMetricValue"] { font-size: 1.4rem; }
+        .card-status {
+            background-color: #1e2229;
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 10px;
+            border-left: 5px solid #0d6efd;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
         .tag-box {
             display: inline-block;
             padding: 5px 10px;
@@ -47,6 +55,14 @@ def carregar_dados(worksheet_name: str, cabecalho=0):
     except Exception:
         return pd.DataFrame()
 
+# Função segura para converter strings brasileiras com vírgula para float
+def safe_to_numeric(val):
+    try:
+        v = str(val).replace(".", "").replace(",", ".")
+        return float(v)
+    except:
+        return 0.0
+
 col_title, col_ref = st.columns([3, 1])
 with col_title:
     st.markdown("### 🚛 A.L.O.V.E. Mobile")
@@ -62,44 +78,34 @@ tab_carretas, tab_prod_exp, tab_frota_glp = st.tabs([
 ])
 
 # ==============================================================================
-# ABA 1: CARRETAS (Dashboard Instantâneo e Evolução)
+# ABA 1: CARRETAS (Blocos)
 # ==============================================================================
 with tab_carretas:
-    st.subheader("Panorama de Pátio")
+    st.subheader("Blocos do Pátio")
     df_c = carregar_dados("Patio_Programacao")
     
     if not df_c.empty:
-        # Pega a última linha para os cartões
         ultima_linha = df_c.iloc[-1]
         
-        c1, c2 = st.columns(2)
-        c1.metric("Pátio Total", f"{ultima_linha.get('PATIO_TOTAL', 0)}")
-        c2.metric("Em Carregamento", f"{ultima_linha.get('EM_CARREGAMENTO', 0)}")
+        # Mapeamento para visual de blocos (Cartões)
+        blocos = [
+            ("Pátio Total (Agendamento)", ultima_linha.get('PATIO_TOTAL', 0), "#6c757d"),
+            ("Fila Triagem (Checklist)", ultima_linha.get('FILA_TRIAGEM', 0), "#ffc107"),
+            ("Apoio / Bloqueados", ultima_linha.get('BLOQUEADOS', 0), "#dc3545"),
+            ("Fila de Carregamento", ultima_linha.get('EM_CARREGAMENTO', 0), "#0d6efd"),
+            ("Termo / Liberados", ultima_linha.get('LIBERADOS_EXPEDICAO', 0), "#198754"),
+        ]
         
-        c3, c4 = st.columns(2)
-        c3.metric("Fila Triagem", f"{ultima_linha.get('FILA_TRIAGEM', 0)}")
-        c4.metric("Liberados Exped.", f"{ultima_linha.get('LIBERADOS_EXPEDICAO', 0)}")
-        
-        st.write("---")
-        st.markdown("##### Evolução do Pátio nas últimas horas")
-        
-        # Pega as últimas 30 medições para o gráfico
-        df_grafico = df_c.tail(30).copy()
-        if "TIMESTAMP" in df_grafico.columns:
-            # Transforma em formato longo para o Altair
-            df_melt = df_grafico.melt(
-                id_vars=["TIMESTAMP"], 
-                value_vars=["PATIO_TOTAL", "EM_CARREGAMENTO"],
-                var_name="Métrica", value_name="Quantidade"
-            )
+        for nome, valor, cor in blocos:
+            st.markdown(f"""
+                <div class="card-status" style="border-left-color: {cor};">
+                    <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1rem; color: #fff;">
+                        <span>{nome}</span>
+                        <span style="color: {cor};">{valor} </span>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
             
-            chart_patio = alt.Chart(df_melt).mark_line(point=True).encode(
-                x=alt.X("TIMESTAMP:N", title="Horário", sort=None),
-                y=alt.Y("Quantidade:Q", title="Volume"),
-                color=alt.Color("Métrica:N", legend=alt.Legend(orient="bottom"))
-            ).properties(height=260)
-            
-            st.altair_chart(chart_patio, use_container_width=True)
     else:
         st.info("Aba Patio_Programacao indisponível.")
 
@@ -113,15 +119,20 @@ with tab_prod_exp:
     if not df_p.empty:
         ultima_p = df_p.iloc[-1]
         
-        c1, c2 = st.columns(2)
-        c1.metric("Produção Hoje", f"{ultima_p.get('PROD_HOJE', 0):,.1f} t")
-        c2.metric("Volume Expedido", f"{ultima_p.get('VOL_HOJE', 0):,.1f} t")
+        # Correção do erro ValueError usando a função segura
+        prod_hj = safe_to_numeric(ultima_p.get('PROD_HOJE', 0))
+        vol_hj = safe_to_numeric(ultima_p.get('VOL_HOJE', 0))
+        est_tot = safe_to_numeric(ultima_p.get('ESTOQUE_TOTAL', 0))
         
-        st.metric("Estoque Total de Pátio", f"{ultima_p.get('ESTOQUE_TOTAL', 0):,.1f} t")
+        c1, c2 = st.columns(2)
+        c1.metric("Produção Hoje", f"{prod_hj:,.1f} t")
+        c2.metric("Volume Expedido", f"{vol_hj:,.1f} t")
+        
+        st.metric("Estoque Total de Pátio", f"{est_tot:,.1f} t")
         
         df_comp = pd.DataFrame({
             "Métrica": ["Produção", "Expedição"],
-            "Toneladas": [pd.to_numeric(ultima_p.get('PROD_HOJE', 0)), pd.to_numeric(ultima_p.get('VOL_HOJE', 0))]
+            "Toneladas": [prod_hj, vol_hj]
         })
         chart_comp = alt.Chart(df_comp).mark_bar(cornerRadius=4).encode(
             x=alt.X("Métrica:N", title=""),
@@ -140,11 +151,11 @@ with tab_prod_exp:
         ultima_q = df_q.iloc[-1]
         
         q1, q2 = st.columns(2)
-        umid_l1 = pd.to_numeric(str(ultima_q.get('UMIDADE_L1', 0)).replace(',', '.'), errors='coerce')
-        umid_l2 = pd.to_numeric(str(ultima_q.get('UMIDADE_L2', 0)).replace(',', '.'), errors='coerce')
+        umid_l1 = safe_to_numeric(ultima_q.get('UMIDADE_L1', 0))
+        umid_l2 = safe_to_numeric(ultima_q.get('UMIDADE_L2', 0))
         
-        q1.metric("Umidade L1", f"{umid_l1:.2f}%" if pd.notna(umid_l1) else "-")
-        q2.metric("Umidade L2", f"{umid_l2:.2f}%" if pd.notna(umid_l2) else "-")
+        q1.metric("Umidade L1", f"{umid_l1:.2f}%" if umid_l1 else "-")
+        q2.metric("Umidade L2", f"{umid_l2:.2f}%" if umid_l2 else "-")
     else:
         st.info("Aba Qualidade_MS indisponível.")
 
@@ -187,23 +198,19 @@ with tab_frota_glp:
     st.write("---")
     st.subheader("⛽ Consumo Mensal de GLP")
     
-    # Abastecimentos_GLP não tem cabeçalho nativo, por isso header=None
     df_glp = carregar_dados("Abastecimentos_GLP", cabecalho=None)
     
     if not df_glp.empty:
-        # Coluna 2 é a Data (ex: 01/09/2026)
-        # Coluna 5 é a Máquina (ex: EMP-031)
-        # Coluna 7 é o peso (ex: 39,22)
         try:
             df_g = pd.DataFrame()
             df_g["DATA_DT"] = pd.to_datetime(df_glp.iloc[:, 2].astype(str).str.strip(), format="%d/%m/%Y", errors="coerce")
             df_g["MES_ANO"] = df_g["DATA_DT"].dt.strftime("%m/%Y")
             df_g["MAQUINA"] = df_glp.iloc[:, 5].astype(str).str.strip()
-            df_g["KG_NUM"] = pd.to_numeric(df_glp.iloc[:, 7].astype(str).str.replace(',', '.'), errors="coerce").fillna(0)
+            # Uso da função segura também no GLP
+            df_g["KG_NUM"] = df_glp.iloc[:, 7].apply(safe_to_numeric)
             
             meses_disp = df_g["MES_ANO"].dropna().unique().tolist()
             if meses_disp:
-                # Ordena os meses para selecionar o mais recente
                 meses_disp.sort(key=lambda x: datetime.strptime(x, "%m/%Y"))
                 mes_sel = st.selectbox("Mês Referência:", meses_disp, index=len(meses_disp)-1)
                 
