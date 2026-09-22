@@ -2,8 +2,8 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import urllib.parse
+import altair as alt
 
-# Configuração de ecrã móvel
 st.set_page_config(
     page_title="A.L.O.V.E. Mobile",
     page_icon="🚛",
@@ -11,7 +11,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Estilização compacta para smartphone
 st.markdown("""
     <style>
         .block-container {
@@ -23,38 +22,49 @@ st.markdown("""
         div[data-testid="stMetricValue"] {
             font-size: 1.4rem;
         }
+        .tag-box {
+            display: inline-block;
+            padding: 6px 12px;
+            margin: 4px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 0.95rem;
+            text-align: center;
+        }
+        .tag-op {
+            background-color: #198754;
+            color: #ffffff;
+        }
+        .tag-standby {
+            background-color: #dc3545;
+            color: #ffffff;
+        }
     </style>
 """, unsafe_allow_html=True)
 
-# ID da folha ALOV_Core_DB
 SHEET_ID = "10FluiIwlynIlPDA74QI8mpHSIrAc-62H1hZNRBsvfCA"
 
 @st.cache_data(ttl=30)
 def carregar_dados(worksheet_name: str):
-    """Lê a aba da folha pública diretamente via exportação CSV."""
     sheet_encoded = urllib.parse.quote(worksheet_name)
     url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={sheet_encoded}"
     try:
         df = pd.read_csv(url)
-        # Remove colunas totalmente vazias originadas pelo Sheets
-        df = df.dropna(how="all", axis=1)
-        df = df.dropna(how="all", axis=0)
+        df = df.dropna(how="all", axis=1).dropna(how="all", axis=0)
         return df
-    except Exception as e:
-        st.error(f"Erro ao carregar '{worksheet_name}': {e}")
+    except Exception:
         return pd.DataFrame()
 
-# Cabeçalho Móvel
+# Cabeçalho Mobile
 col_title, col_ref = st.columns([3, 1])
 with col_title:
     st.markdown("### 🚛 A.L.O.V.E. Mobile")
-    st.caption("Ecossistema Operacional da Expedição")
+    st.caption("Indicadores Operacionais em Tempo Real")
 with col_ref:
     if st.button("🔄 Atualizar"):
         st.cache_data.clear()
         st.rerun()
 
-# Três Abas Operacionais
 tab_carretas, tab_producao, tab_frota_glp = st.tabs([
     "🚚 Carretas",
     "🏭 Produção",
@@ -62,44 +72,55 @@ tab_carretas, tab_producao, tab_frota_glp = st.tabs([
 ])
 
 # ==============================================================================
-# ABA 1: CARRETAS (Pátio & Programação)
+# ABA 1: CARRETAS (Apenas Gráficos)
 # ==============================================================================
 with tab_carretas:
-    st.subheader("Fluxo de Pátio & Carretas")
+    st.subheader("Fluxo de Pátio & Carregamento")
     df_carretas = carregar_dados("Patio_Programacao")
     
     if not df_carretas.empty:
         cols_norm = {c: str(c).strip().upper() for c in df_carretas.columns}
         df_c = df_carretas.rename(columns=cols_norm)
         
-        col_status = next((c for c in df_c.columns if any(k in c for k in ["STATUS", "ETAPA", "FASE"])), None)
-        col_tipo = next((c for c in df_c.columns if any(k in c for k in ["TIPO", "OPERACAO", "PRODUTO"])), None)
+        # Último apontamento registrado
+        col_patio = next((c for c in df_c.columns if "PATIO_TOTAL" in c or "TOTAL" in c), None)
+        col_carr = next((c for c in df_c.columns if "CARREGAMENTO" in c), None)
         
-        if col_tipo:
-            tipos = ["TODOS"] + [str(x) for x in df_c[col_tipo].dropna().unique().tolist()]
-            tipo_sel = st.selectbox("Tipo de Operação:", tipos)
-            if tipo_sel != "TODOS":
-                df_c = df_c[df_c[col_tipo].astype(str) == tipo_sel]
-                
-        if col_status:
-            st.markdown("##### Status das Carretas")
-            contagem = df_c[col_status].value_counts()
-            grid = st.columns(min(len(contagem), 3) if len(contagem) > 0 else 1)
-            for idx, (st_nome, val) in enumerate(contagem.items()):
-                grid[idx % len(grid)].metric(str(st_nome), f"{val}")
-        
+        m1, m2 = st.columns(2)
+        if col_patio:
+            val_p = pd.to_numeric(df_c[col_patio], errors="coerce").dropna().iloc[-1]
+            m1.metric("Pátio Total Atual", f"{val_p:,.0f}")
+        if col_carr:
+            val_c = pd.to_numeric(df_c[col_carr], errors="coerce").dropna().iloc[-1]
+            m2.metric("Em Carregamento", f"{val_c:,.0f}")
+            
         st.write("---")
-        st.dataframe(df_c, use_container_width=True, hide_index=True)
+        
+        # Gráfico Temporal da evolução do Pátio e Carregamento
+        col_time = next((c for c in df_c.columns if "TIME" in c or "DATA" in c or "HORA" in c), df_c.columns[0])
+        col_vars = [c for c in [col_patio, col_carr] if c is not None]
+        
+        if col_vars:
+            df_plot = df_c[[col_time] + col_vars].copy()
+            for col in col_vars:
+                df_plot[col] = pd.to_numeric(df_plot[col], errors="coerce")
+            
+            df_melted = df_plot.melt(id_vars=[col_time], value_vars=col_vars, var_name="Métrica", value_name="Volume")
+            chart_patio = alt.Chart(df_melted).mark_line(point=True).encode(
+                x=alt.X(f"{col_time}:N", sort=None, title="Horário"),
+                y=alt.Y("Volume:Q", title="Volume / Quantidade"),
+                color=alt.Color("Métrica:N", legend=alt.Legend(orient="bottom"))
+            ).properties(height=280)
+            st.altair_chart(chart_patio, use_container_width=True)
     else:
-        st.info("Aba 'Patio_Programacao' vazia ou sem registos.")
+        st.info("Aba 'Patio_Programacao' sem dados.")
 
 # ==============================================================================
-# ABA 2: PRODUÇÃO & QUALIDADE
+# ABA 2: PRODUÇÃO (Apenas Gráficos)
 # ==============================================================================
 with tab_producao:
-    st.subheader("Produção & Qualidade")
+    st.subheader("Produção Industrial")
     df_prod = carregar_dados("Expedicao_Producao")
-    df_qual = carregar_dados("Qualidade_MS")
     
     if not df_prod.empty:
         cols_norm = {c: str(c).strip().upper() for c in df_prod.columns}
@@ -109,76 +130,95 @@ with tab_producao:
         col_vol = next((c for c in df_p.columns if any(k in c for k in ["PRODUCAO", "TON", "PESO", "QTD", "VOLUME"])), None)
         
         if col_vol:
-            try:
-                prod_total = pd.to_numeric(df_p[col_vol], errors='coerce').sum()
-                st.metric("🏭 Produção Total", f"{prod_total:,.1f} t")
-            except Exception:
-                st.metric("Total de Registos", len(df_p))
+            prod_num = pd.to_numeric(df_p[col_vol], errors='coerce').fillna(0)
+            st.metric("🏭 Produção Total Acumulada", f"{prod_num.sum():,.1f} t")
+            
+            if col_maq:
+                st.markdown("##### Produção por Linha / Máquina")
+                df_m = df_p.groupby(col_maq)[col_vol].apply(lambda x: pd.to_numeric(x, errors='coerce').sum()).reset_index()
+                df_m.columns = ["Máquina", "Toneladas"]
                 
-        if col_maq and col_vol:
-            st.markdown("##### ⚙️ Produção por Máquina")
-            try:
-                prod_m = df_p.groupby(col_maq)[col_vol].sum().reset_index()
-                st.dataframe(prod_m, use_container_width=True, hide_index=True)
-            except Exception:
-                st.dataframe(df_p[[col_maq, col_vol]], use_container_width=True, hide_index=True)
-                
-        st.write("---")
-        st.markdown("**Apontamentos de Produção:**")
-        st.dataframe(df_prod, use_container_width=True, hide_index=True)
+                chart_maq = alt.Chart(df_m).mark_bar(cornerRadius=4).encode(
+                    x=alt.X("Máquina:N", sort="-y", title="Máquina"),
+                    y=alt.Y("Toneladas:Q", title="Produção (t)"),
+                    color=alt.Color("Máquina:N", legend=None)
+                ).properties(height=260)
+                st.altair_chart(chart_maq, use_container_width=True)
     else:
-        st.info("Aba 'Expedicao_Producao' indisponível ou vazia.")
-        
-    if not df_qual.empty:
-        st.write("---")
-        st.markdown("##### 🏷️ Indicadores de Qualidade")
-        st.dataframe(df_qual, use_container_width=True, hide_index=True)
+        st.info("Aba 'Expedicao_Producao' indisponível.")
 
 # ==============================================================================
-# ABA 3: FROTA POR PERÍODO & CONSUMO GLP
+# ABA 3: MÁQUINAS (Tags por Posto) & GLP (Total + Gráfico)
 # ==============================================================================
 with tab_frota_glp:
-    st.subheader("Gestão de Máquinas & GLP")
-    
-    st.markdown("#### 🚜 Máquinas por Período / Turno")
+    st.subheader("Máquinas por Período")
     df_frota = carregar_dados("Rodizio_Frota")
     
     if not df_frota.empty:
         cols_f = {c: str(c).strip().upper() for c in df_frota.columns}
         df_f = df_frota.rename(columns=cols_f)
         
-        col_turno = next((c for c in df_f.columns if any(k in c for k in ["TURNO", "JANELA", "PERIODO", "HORARIO"])), None)
+        col_turno = next((c for c in df_f.columns if any(k in c for k in ["TURNO", "JANELA", "PERIODO"])), None)
+        col_posto = next((c for c in df_f.columns if any(k in c for k in ["POSTO", "AREA", "SETOR"])), None)
+        col_status = next((c for c in df_f.columns if any(k in c for k in ["STATUS"])), None)
+        col_tag = next((c for c in df_f.columns if any(k in c for k in ["EQUIPAMENTO", "TAG", "MAQUINA"])), None)
         
         if col_turno:
-            turnos = ["TODOS"] + [str(x) for x in df_f[col_turno].dropna().unique().tolist()]
+            turnos = df_f[col_turno].dropna().unique().tolist()
             hora_atual = datetime.now().hour
-            idx_sugerido = 0
+            idx_sug = 0
             for i, t in enumerate(turnos):
                 if "00:00" in t and (0 <= hora_atual < 8):
-                    idx_sugerido = i
+                    idx_sug = i
                 elif "08:00" in t and (8 <= hora_atual < 16):
-                    idx_sugerido = i
+                    idx_sug = i
                 elif "16:00" in t and (16 <= hora_atual <= 23):
-                    idx_sugerido = i
+                    idx_sug = i
+                    
+            turno_sel = st.selectbox("Turno / Janela:", turnos, index=idx_sug)
+            df_f = df_f[df_f[col_turno] == turno_sel]
             
-            turno_escolhido = st.selectbox("Selecione o Período / Horário:", turnos, index=idx_sugerido)
-            if turno_escolhido != "TODOS":
-                df_f = df_f[df_f[col_turno].astype(str) == turno_escolhido]
-        
-        col_status_maq = next((c for c in df_f.columns if any(k in c for k in ["STATUS"])), None)
-        if col_status_maq:
-            m1, m2 = st.columns(2)
-            em_op = len(df_f[df_f[col_status_maq].astype(str).str.contains("OPERAÇÃO|OPERACAO", case=False, na=False)])
-            em_sb = len(df_f[df_f[col_status_maq].astype(str).str.contains("STAND-BY|STANDBY", case=False, na=False)])
-            m1.metric("Em Operação", f"{em_op} un")
-            m2.metric("Stand-by", f"{em_sb} un")
+        if col_tag and col_status and col_posto:
+            # 1. Carregamento em Operação
+            carr_op = df_f[(df_f[col_posto].astype(str).str.contains("CARREG", case=False, na=False)) & 
+                           (df_f[col_status].astype(str).str.contains("OPERA", case=False, na=False))][col_tag].tolist()
             
-        st.dataframe(df_f, use_container_width=True, hide_index=True)
+            # 2. Linha em Operação
+            linha_op = df_f[(df_f[col_posto].astype(str).str.contains("LINHA", case=False, na=False)) & 
+                            (df_f[col_status].astype(str).str.contains("OPERA", case=False, na=False))][col_tag].tolist()
+            
+            # 3. Equipamentos Parados / Stand-by
+            paradas = df_f[df_f[col_status].astype(str).str.contains("STAND|PARAD|OFF", case=False, na=False)][col_tag].tolist()
+            
+            st.markdown("🟢 **Em Operação — CARREGAMENTO:**")
+            if carr_op:
+                tags_html = " ".join([f'<span class="tag-box tag-op">{tag}</span>' for tag in carr_op])
+                st.markdown(tags_html, unsafe_allow_html=True)
+            else:
+                st.caption("Nenhum equipamento alocado.")
+                
+            st.markdown("<br>🟢 **Em Operação — LINHA:**", unsafe_allow_html=True)
+            if linha_op:
+                tags_html = " ".join([f'<span class="tag-box tag-op">{tag}</span>' for tag in linha_op])
+                st.markdown(tags_html, unsafe_allow_html=True)
+            else:
+                st.caption("Nenhum equipamento alocado.")
+                
+            st.markdown("<br>🔴 **Equipamentos Parados / Stand-by:**", unsafe_allow_html=True)
+            if paradas:
+                tags_html = " ".join([f'<span class="tag-box tag-standby">{tag}</span>' for tag in paradas])
+                st.markdown(tags_html, unsafe_allow_html=True)
+            else:
+                st.caption("Nenhuma máquina parada.")
     else:
         st.info("Aba 'Rodizio_Frota' sem dados.")
         
     st.write("---")
-    st.markdown("#### ⛽ Abastecimento de GLP")
+    
+    # -------------------------------------------------------------------------
+    # CONSUMO GLP (Apenas Total Geral + Gráfico por Máquina)
+    # -------------------------------------------------------------------------
+    st.subheader("⛽ Abastecimento de GLP")
     df_glp = carregar_dados("Abastecimentos_GLP")
     
     if not df_glp.empty:
@@ -189,31 +229,28 @@ with tab_frota_glp:
         col_qtd_glp = next((c for c in df_g.columns if any(k in c for k in ["QTD", "QUANTIDADE", "VOLUME", "LITROS", "KG", "TOTAL"])), None)
         
         if col_qtd_glp:
-            try:
-                glp_total = pd.to_numeric(df_g[col_qtd_glp], errors='coerce').sum()
-                st.metric("🔥 Total Geral de GLP", f"{glp_total:,.1f}")
-            except Exception:
-                st.metric("Total de Abastecimentos", len(df_g))
+            total_glp = pd.to_numeric(df_g[col_qtd_glp], errors='coerce').sum()
+            st.metric("Total Geral de GLP Abastecido", f"{total_glp:,.1f}")
         else:
-            st.metric("Total de Registos", f"{len(df_g)} un")
+            st.metric("Total Geral de Trocas de GLP", f"{len(df_g)} un")
             
         if col_maq_glp:
-            st.markdown("##### 🚜 GLP por Máquina")
+            st.markdown("##### Consumo de GLP por Máquina")
             if col_qtd_glp:
-                try:
-                    glp_por_maq = df_g.groupby(col_maq_glp)[col_qtd_glp].sum().reset_index()
-                    glp_por_maq = glp_por_maq.sort_values(by=col_qtd_glp, ascending=False)
-                    st.dataframe(glp_por_maq, use_container_width=True, hide_index=True)
-                except Exception:
-                    st.dataframe(df_g[[col_maq_glp, col_qtd_glp]], use_container_width=True, hide_index=True)
+                df_glp_group = df_g.groupby(col_maq_glp)[col_qtd_glp].apply(lambda x: pd.to_numeric(x, errors='coerce').sum()).reset_index()
+                df_glp_group.columns = ["Equipamento", "Consumo"]
             else:
-                trocas_maq = df_g[col_maq_glp].value_counts().reset_index()
-                trocas_maq.columns = ["Equipamento", "Contagem"]
-                st.dataframe(trocas_maq, use_container_width=True, hide_index=True)
+                df_glp_group = df_g[col_maq_glp].value_counts().reset_index()
+                df_glp_group.columns = ["Equipamento", "Consumo"]
                 
-        st.markdown("**Detalhamento de Abastecimentos:**")
-        st.dataframe(df_glp, use_container_width=True, hide_index=True)
+            chart_glp = alt.Chart(df_glp_group).mark_bar(color="#fd7e14", cornerRadius=4).encode(
+                x=alt.X("Equipamento:N", sort="-y", title="Equipamento"),
+                y=alt.Y("Consumo:Q", title="Total de GLP / Trocas"),
+                tooltip=["Equipamento", "Consumo"]
+            ).properties(height=260)
+            
+            st.altair_chart(chart_glp, use_container_width=True)
     else:
-        st.info("Aba 'Abastecimentos_GLP' sem registos.")
+        st.info("Aba 'Abastecimentos_GLP' sem registros.")
 
 st.caption("A.L.O.V.E. Mobile Dashboard")
