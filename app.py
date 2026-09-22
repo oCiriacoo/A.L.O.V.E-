@@ -12,10 +12,11 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# Aumentei o padding-top de 0.8rem para 3.5rem para "dar os enters" e descer tudo
 st.markdown("""
     <style>
         .block-container {
-            padding-top: 0.8rem;
+            padding-top: 3.5rem;
             padding-bottom: 2rem;
             padding-left: 0.8rem;
             padding-right: 0.8rem;
@@ -57,32 +58,17 @@ def carregar_dados(worksheet_name: str, cabecalho=0):
         return pd.DataFrame()
 
 def safe_to_numeric(val):
-    if pd.isna(val):
-        return 0.0
-    
-    # Se já for um número (int ou float), devolve diretamente
-    if isinstance(val, (int, float)):
-        return float(val)
-        
+    if pd.isna(val): return 0.0
+    if isinstance(val, (int, float)): return float(val)
     try:
         s_val = str(val).strip()
-        if not s_val:
-            return 0.0
-            
-        # Se contiver uma vírgula, assume o formato PT-BR (ex: 3.580,0)
+        if not s_val: return 0.0
         if "," in s_val:
-            s_val = s_val.replace(".", "")  # remove os pontos dos milhares
-            s_val = s_val.replace(",", ".") # transforma a vírgula em ponto decimal
-            
+            s_val = s_val.replace(".", "")
+            s_val = s_val.replace(",", ".")
         return float(s_val)
     except Exception:
         return 0.0
-
-tab_carretas, tab_prod_exp, tab_frota_glp = st.tabs([
-    "🚚 Carretas",
-    "🏭 Prod & Exp",
-    "⛽ Frota & GLP"
-])
 
 # ==============================================================================
 # 🔥 LEITURA DIRETA DO CACHE DO A.L.O.V.E CORE
@@ -95,7 +81,6 @@ if not df_cache.empty:
         valor = str(row.iloc[1]).strip()
         cache_dict[chave] = valor
 
-# Extração dos JSONs salvos pelo robô
 dados_patio = {}
 qualidade = {}
 try: dados_patio = json.loads(cache_dict.get("dados_patio", "{}"))
@@ -105,13 +90,35 @@ except: pass
 
 vol_hoje = safe_to_numeric(cache_dict.get("vol_hoje", 0))
 estoque_total = safe_to_numeric(cache_dict.get("estoque_total", 0))
+ultima_att = cache_dict.get("ultima_atualizacao", "Desconhecida")
 
 prod_ms1 = safe_to_numeric(qualidade.get("MS1", {}).get("producao", 0))
 prod_ms2 = safe_to_numeric(qualidade.get("MS2", {}).get("producao", 0))
 prod_hoje = prod_ms1 + prod_ms2
 
 # ==============================================================================
-# ABA 1: CARRETAS (Blocos com Qtd e Toneladas Lado a Lado REAIS)
+# CABEÇALHO REPOSICIONADO COM DATA/HORA
+# ==============================================================================
+col_title, col_ref = st.columns([2.5, 1])
+with col_title:
+    st.markdown("### 🚛 A.L.O.V.E. Mobile")
+    st.caption(f"Última Atualização: **{ultima_att}**")
+with col_ref:
+    st.markdown("<div style='margin-top: 5px;'></div>", unsafe_allow_html=True)
+    if st.button("🔄 Atualizar"):
+        st.cache_data.clear()
+        st.rerun()
+
+st.write("") # Mais um pequeno espaço antes das abas
+
+tab_carretas, tab_prod_exp, tab_frota_glp = st.tabs([
+    "🚚 Carretas",
+    "🏭 Prod & Exp",
+    "⛽ Frota & GLP"
+])
+
+# ==============================================================================
+# ABA 1: CARRETAS
 # ==============================================================================
 with tab_carretas:
     st.subheader("Blocos do Pátio")
@@ -137,7 +144,6 @@ with tab_carretas:
                     </div>
                 </div>
             """, unsafe_allow_html=True)
-            
     else:
         st.info("Aba Cache_Painel (dados_patio) indisponível.")
 
@@ -189,19 +195,16 @@ with tab_prod_exp:
             
             c_q1, c_q2, c_q3 = st.columns(3)
             
-            # Coluna 1: Sujidade
             with c_q1:
                 st.markdown(f"<div style='font-size: 1rem; color: #a0a0a0;'>Sujidade</div>", unsafe_allow_html=True)
                 st.markdown(f"<div style='font-size: 1.4rem;'>{q_suj:.2f}</div>", unsafe_allow_html=True)
                 st.markdown(f"<div style='font-size: 0.75rem; color: #6c757d; margin-top: -5px;'>Máx: 2.5</div>", unsafe_allow_html=True)
             
-            # Coluna 2: Viscosidade
             with c_q2:
                 st.markdown(f"<div style='font-size: 1rem; color: #a0a0a0;'>Viscosidade</div>", unsafe_allow_html=True)
                 st.markdown(f"<div style='font-size: 1.4rem;'>{q_visc:,.0f}</div>", unsafe_allow_html=True)
                 st.markdown(f"<div style='font-size: 0.75rem; color: #6c757d; margin-top: -5px;'>Mín: 650</div>", unsafe_allow_html=True)
 
-            # Coluna 3: Teor Seco
             with c_q3:
                 st.markdown(f"<div style='font-size: 1rem; color: #a0a0a0;'>Teor Seco</div>", unsafe_allow_html=True)
                 st.markdown(f"<div style='font-size: 1.4rem;'>{q_teor:.2f}%</div>", unsafe_allow_html=True)
