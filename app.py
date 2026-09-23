@@ -82,9 +82,13 @@ if not df_cache.empty:
 
 dados_patio = {}
 qualidade = {}
+volume_por_turno = {}  # <- NOVO DICIONÁRIO
+
 try: dados_patio = json.loads(cache_dict.get("dados_patio", "{}"))
 except: pass
 try: qualidade = json.loads(cache_dict.get("qualidade", "{}"))
+except: pass
+try: volume_por_turno = json.loads(cache_dict.get("volume_por_turno", "{}"))
 except: pass
 
 vol_hoje = safe_to_numeric(cache_dict.get("vol_hoje", 0))
@@ -99,7 +103,6 @@ prod_hoje = prod_ms1 + prod_ms2
 # ==============================================================================
 # 🧠 CÁLCULO DINÂMICO DE PREVISÃO (AJUSTADO PARA O FUSO DO BRASIL UTC-3)
 # ==============================================================================
-# Subtrai 3 horas do relógio do servidor para igualar à hora do Brasil
 agora = datetime.utcnow() - timedelta(hours=3)
 
 # 1. Previsão de Produção
@@ -223,6 +226,34 @@ with tab_prod_exp:
     )
     chart_comp = (bars + text).properties(height=280)
     st.altair_chart(chart_comp, use_container_width=True)
+
+    # -------------------------------------------------------------------------
+    # 🔥 NOVO GRÁFICO: EXPEDIÇÃO SEGREGADA POR TURNO (BAR CHART)
+    # -------------------------------------------------------------------------
+    st.write("---")
+    st.subheader("📊 Expedição por Turno")
+    
+    if volume_por_turno:
+        # Transforma o dicionário (ex: {"Turno C": 1500, "Turno B": 1200}) num DataFrame
+        df_vol = pd.DataFrame({
+            "Turno": list(volume_por_turno.keys()),
+            "Toneladas": list(volume_por_turno.values())
+        })
+        
+        max_vol_turno = max(df_vol["Toneladas"]) if not df_vol.empty else 100
+        bars_vol = alt.Chart(df_vol).mark_bar(cornerRadius=4).encode(
+            x=alt.X("Turno:N", sort=None, title="", axis=alt.Axis(labelAngle=0)),
+            y=alt.Y("Toneladas:Q", title="Toneladas", scale=alt.Scale(domain=[0, max_vol_turno * 1.2])),
+            color=alt.Color("Turno:N", legend=None, scale=alt.Scale(range=["#3498DB", "#8e44ad", "#e67e22", "#16a085"])),
+            tooltip=["Turno", "Toneladas"]
+        )
+        text_vol = bars_vol.mark_text(align='center', baseline='bottom', dy=-5, color='white', fontSize=13, fontWeight='bold').encode(
+            text=alt.Text('Toneladas:Q', format=',.1f')
+        )
+        chart_vol = (bars_vol + text_vol).properties(height=260)
+        st.altair_chart(chart_vol, use_container_width=True)
+    else:
+        st.info("A aguardar dados segregados por turno. O A.L.O.V.E Core precisa enviar a chave 'volume_por_turno' para a Cache_Painel.")
 
     st.write("---")
     st.subheader("Indicadores de Qualidade")
