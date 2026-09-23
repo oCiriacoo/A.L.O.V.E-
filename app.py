@@ -12,34 +12,61 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# ==============================================================================
+# 🎨 IDENTIDADE VISUAL (NAVY BLUE - ESPELHO DA TV)
+# ==============================================================================
 st.markdown("""
     <style>
         .block-container {
-            padding-top: 3.5rem;
+            padding-top: 2rem;
             padding-bottom: 2rem;
             padding-left: 0.8rem;
             padding-right: 0.8rem;
         }
-        div[data-testid="stMetricValue"] { font-size: 1.4rem; }
-        .card-status {
-            background-color: #1e2229;
-            border-radius: 8px;
-            padding: 14px;
+        /* Cards de Métrica Customizados */
+        .metric-card {
+            background-color: #111c2e;
+            border: 1px solid #1c2b42;
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
             margin-bottom: 10px;
-            border-left: 5px solid #0d6efd;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
         }
+        .metric-title { color: #94a3b8; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; }
+        .metric-value { color: #ffffff; font-size: 1.8rem; font-weight: 900; line-height: 1.2; }
+        .metric-sub { color: #3498DB; font-size: 0.75rem; font-weight: 700; }
+        
+        /* Grid do Pátio */
+        .patio-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        .card-patio {
+            background-color: #111c2e;
+            border-radius: 10px;
+            padding: 12px;
+            border-left: 4px solid;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .card-patio-title { font-weight: 800; font-size: 1rem; color: #ffffff; margin-bottom: 4px; }
+        .card-patio-qtd { font-size: 1.4rem; font-weight: 900; }
+        .card-patio-ton { font-size: 0.85rem; color: #94a3b8; font-weight: 600; }
+        
+        /* Tags Frota */
         .tag-box {
             display: inline-block;
-            padding: 5px 10px;
-            margin: 3px;
-            border-radius: 6px;
-            font-weight: bold;
-            font-size: 0.9rem;
+            padding: 6px 12px;
+            margin: 4px;
+            border-radius: 8px;
+            font-weight: 800;
+            font-size: 0.85rem;
             text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
-        .tag-op { background-color: #198754; color: #ffffff; }
-        .tag-standby { background-color: #dc3545; color: #ffffff; }
+        .tag-op { background-color: #00D672; color: #0a101d; }
+        .tag-standby { background-color: #E74C3C; color: #ffffff; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -63,8 +90,7 @@ def safe_to_numeric(val):
         s_val = str(val).strip()
         if not s_val: return 0.0
         if "," in s_val:
-            s_val = s_val.replace(".", "")
-            s_val = s_val.replace(",", ".")
+            s_val = s_val.replace(".", "").replace(",", ".")
         return float(s_val)
     except Exception:
         return 0.0
@@ -73,23 +99,11 @@ def safe_to_numeric(val):
 # 🔥 LEITURA DOS DADOS DA NUVEM (CACHE_PAINEL)
 # ==============================================================================
 df_cache = carregar_dados("Cache_Painel", cabecalho=0)
-cache_dict = {}
-if not df_cache.empty:
-    for _, row in df_cache.iterrows():
-        chave = str(row.iloc[0]).strip()
-        valor = str(row.iloc[1]).strip()
-        cache_dict[chave] = valor
+cache_dict = {str(row.iloc[0]).strip(): str(row.iloc[1]).strip() for _, row in df_cache.iterrows()} if not df_cache.empty else {}
 
-dados_patio = {}
-qualidade = {}
-volume_por_turno = {}  # <- NOVO DICIONÁRIO
-
-try: dados_patio = json.loads(cache_dict.get("dados_patio", "{}"))
-except: pass
-try: qualidade = json.loads(cache_dict.get("qualidade", "{}"))
-except: pass
-try: volume_por_turno = json.loads(cache_dict.get("volume_por_turno", "{}"))
-except: pass
+dados_patio = json.loads(cache_dict.get("dados_patio", "{}"))
+qualidade = json.loads(cache_dict.get("qualidade", "{}"))
+dados_turnos = json.loads(cache_dict.get("dados_turnos", "{}"))
 
 vol_hoje = safe_to_numeric(cache_dict.get("vol_hoje", 0))
 estoque_total = safe_to_numeric(cache_dict.get("estoque_total", 0))
@@ -101,260 +115,190 @@ prod_ms2 = safe_to_numeric(qualidade.get("MS2", {}).get("producao", 0))
 prod_hoje = prod_ms1 + prod_ms2
 
 # ==============================================================================
-# 🧠 CÁLCULO DINÂMICO DE PREVISÃO (AJUSTADO PARA O FUSO DO BRASIL UTC-3)
+# 🧠 CÁLCULO DINÂMICO DE PREVISÃO (UTC-3)
 # ==============================================================================
 agora = datetime.utcnow() - timedelta(hours=3)
-
-# 1. Previsão de Produção
 horas_passadas_prod = max(0.1, agora.hour + (agora.minute / 60.0))
 prev_prod = (prod_hoje / horas_passadas_prod) * 24
 
-# 2. Previsão de Expedição
-dia_semana = agora.weekday()
-horas_produtivas = 0.0
-for h in range(agora.hour, 24):
-    fracao = 1.0 if h > agora.hour else (1.0 - (agora.minute / 60.0))
-    fator = 6.25 / 8.0
-    if 0 <= h < 8 and dia_semana in (0, 6): # Regra FDS
-        fator = 0.0
-    horas_produtivas += fracao * fator
-
+horas_produtivas = sum((1.0 if h > agora.hour else (1.0 - (agora.minute / 60.0))) * (0.0 if 0 <= h < 8 and agora.weekday() in (0, 6) else (6.25 / 8.0)) for h in range(agora.hour, 24))
 cap_maxima_restante = horas_produtivas * 500.0
-vol_patio = 0.0
-if dados_patio:
-    vol_patio += dados_patio.get("PR", {}).get("peso", 0.0)
-    vol_patio += dados_patio.get("00", {}).get("peso", 0.0)
-    vol_patio += dados_patio.get("01", {}).get("peso", 0.0)
-    vol_patio += dados_patio.get("FC", {}).get("peso", 0.0)
-
-projecao_real = min(cap_maxima_restante, vol_patio)
-prev_carr = vol_hoje + projecao_real
+vol_patio = sum(dados_patio.get(k, {}).get("peso", 0.0) for k in ["PR", "00", "01", "FC"]) if dados_patio else 0.0
+prev_carr = vol_hoje + min(cap_maxima_restante, vol_patio)
 
 # ==============================================================================
 # CABEÇALHO COM ÚLTIMA ATUALIZAÇÃO E OBSERVAÇÕES
 # ==============================================================================
-col_title, col_ref = st.columns([2.5, 1])
+col_title, col_ref = st.columns([3, 1])
 with col_title:
-    st.markdown("### 🚛 A.L.O.V.E. Mobile")
-    st.caption(f"Última Atualização: **{ultima_att}**")
+    st.markdown("<h3 style='margin:0; color:#3498DB;'>🚛 A.L.O.V.E. Mobile</h3>", unsafe_allow_html=True)
+    st.caption(f"Atualizado: **{ultima_att}**")
 with col_ref:
     st.markdown("<div style='margin-top: 5px;'></div>", unsafe_allow_html=True)
     if st.button("🔄 Atualizar"):
         st.cache_data.clear()
         st.rerun()
 
-# Lógica das Cores da Observação
-if observacoes and observacoes.strip() != "" and observacoes.strip() != "None":
-    if "Normal" in observacoes:
-        cor_bg, cor_border, cor_txt = "#0d2417", "#00D672", "#00D672"
-    else:
-        cor_bg, cor_border, cor_txt = "#2b1111", "#E74C3C", "#ff9999"
-        
+if observacoes and observacoes.strip() not in ["", "None"]:
+    cor_bg, cor_border, cor_txt = ("#0d2417", "#00D672", "#00D672") if "Normal" in observacoes else ("#2b1111", "#E74C3C", "#ff9999")
     st.markdown(f"""
-        <div style="background-color: {cor_bg}; border-left: 4px solid {cor_border}; padding: 12px; margin-bottom: 15px; border-radius: 4px;">
-            <h4 style="color: {cor_border}; margin: 0 0 6px 0; font-size: 14px;">📋 Observações Operacionais</h4>
-            <div style="color: {cor_txt}; font-size: 13px; font-weight: 500; white-space: pre-wrap;">{observacoes}</div>
+        <div style="background-color: {cor_bg}; border-left: 4px solid {cor_border}; padding: 12px; margin: 10px 0; border-radius: 6px;">
+            <h4 style="color: {cor_border}; margin: 0 0 6px 0; font-size: 13px;">📋 Observações Operacionais</h4>
+            <div style="color: {cor_txt}; font-size: 12px; font-weight: 600; white-space: pre-wrap;">{observacoes}</div>
         </div>
     """, unsafe_allow_html=True)
 
 st.write("") 
 
-tab_carretas, tab_prod_exp, tab_frota_glp = st.tabs([
-    "🚚 Carretas",
-    "🏭 Prod & Exp",
-    "⛽ Frota & GLP"
-])
+tab_carretas, tab_prod_exp, tab_frota = st.tabs(["🚚 Pátio", "🏭 Logística", "⛽ Frota"])
 
 # ==============================================================================
-# ABA 1: CARRETAS
+# ABA 1: CARRETAS (GRID)
 # ==============================================================================
 with tab_carretas:
-    st.subheader("Blocos do Pátio")
     if dados_patio:
         blocos = [
-            ("Programado", dados_patio.get('PR', {}).get('veiculos', 0), dados_patio.get('PR', {}).get('peso', 0.0), "#6c757d"),
-            ("Checklist", dados_patio.get('00', {}).get('veiculos', 0), dados_patio.get('00', {}).get('peso', 0.0), "#ffc107"),
-            ("Apoio", dados_patio.get('01', {}).get('veiculos', 0), dados_patio.get('01', {}).get('peso', 0.0), "#dc3545"),
-            ("Fila", dados_patio.get('FC', {}).get('veiculos', 0), dados_patio.get('FC', {}).get('peso', 0.0), "#0d6efd"),
-            ("Termo", dados_patio.get('TR', {}).get('veiculos', 0), dados_patio.get('TR', {}).get('peso', 0.0), "#198754"),
+            ("🚙 Programado", "PR", "#94A3B8"),
+            ("📋 Checklist", "00", "#E5B800"),
+            ("🚛 Apoio", "01", "#E67E22"),
+            ("✅ Fila", "FC", "#00D672"),
+            ("📄 Termo", "TR", "#3498DB"),
         ]
-        for nome, qtd, ton_real, cor in blocos:
-            st.markdown(f"""
-                <div class="card-status" style="border-left-color: {cor};">
-                    <div style="font-weight:bold; font-size:1.1rem; color: #fff; margin-bottom: 8px;">
-                        {nome}
-                    </div>
-                    <div style="display:flex; justify-content:space-between; font-size: 1.0rem;">
-                        <span style="color: #a0a0a0;">Qtd: <b style="color: {cor};">{int(qtd)}</b></span>
-                        <span style="color: #a0a0a0;">Ton: <b style="color: {cor};">{ton_real:,.1f} t</b></span>
-                    </div>
+        
+        # Cria a grade HTML
+        html_cards = '<div class="patio-grid">'
+        for titulo, chave, cor in blocos:
+            qtd = dados_patio.get(chave, {}).get("veiculos", 0)
+            peso = dados_patio.get(chave, {}).get("peso", 0.0)
+            html_cards += f"""
+                <div class="card-patio" style="border-color: {cor};">
+                    <div class="card-patio-title" style="color: {cor};">{titulo}</div>
+                    <div class="card-patio-qtd" style="color: #ffffff;">{int(qtd)} <span style="font-size:0.9rem; color:#94a3b8; font-weight:600;">Veíc</span></div>
+                    <div class="card-patio-ton">{peso:,.0f} t</div>
                 </div>
-            """, unsafe_allow_html=True)
+            """
+        html_cards += '</div>'
+        st.markdown(html_cards, unsafe_allow_html=True)
     else:
-        st.info("Aba Cache_Painel (dados_patio) indisponível.")
+        st.info("Dados do pátio indisponíveis na nuvem.")
 
 # ==============================================================================
 # ABA 2: PRODUÇÃO, EXPEDIÇÃO E QUALIDADE
 # ==============================================================================
 with tab_prod_exp:
-    st.subheader("Expedição & Produção Diária (t)")
-    
-    c1, c2 = st.columns(2)
-    with c1:
-        st.metric("Produção Hoje", f"{prod_hoje:,.1f} t")
-        st.markdown(f"<div style='color: #3498DB; font-weight: 600; font-size: 0.95rem; margin-top: -15px;'>Prev: {prev_prod:,.1f} t</div>", unsafe_allow_html=True)
-    with c2:
-        st.metric("Volume Expedido", f"{vol_hoje:,.1f} t")
-        st.markdown(f"<div style='color: #3498DB; font-weight: 600; font-size: 0.95rem; margin-top: -15px;'>Prev: {prev_carr:,.1f} t</div>", unsafe_allow_html=True)
-        
-    st.write("")
-    st.metric("Estoque Total", f"{estoque_total:,.1f} t")
-    
-    df_comp = pd.DataFrame({
-        "Métrica": ["Produção", "Expedição", "Estoque Total"],
-        "Toneladas": [prod_hoje, vol_hoje, estoque_total]
-    })
-    
-    max_ton = max(df_comp["Toneladas"]) if not df_comp.empty else 100
-    bars = alt.Chart(df_comp).mark_bar(cornerRadius=4).encode(
-        x=alt.X("Métrica:N", sort=None, title=""),
-        y=alt.Y("Toneladas:Q", title="Toneladas", scale=alt.Scale(domain=[0, max_ton * 1.25])),
-        color=alt.Color("Métrica:N", scale=alt.Scale(range=["#20c997", "#0d6efd", "#ffc107"]), legend=None)
-    )
-    text = bars.mark_text(align='center', baseline='bottom', dy=-5, color='white').encode(
-        text=alt.Text('Toneladas:Q', format=',.1f')
-    )
-    chart_comp = (bars + text).properties(height=280)
-    st.altair_chart(chart_comp, use_container_width=True)
+    # 1. Cards Superiores
+    st.markdown(f"""
+        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+            <div class="metric-card" style="flex: 1; border-bottom: 3px solid #00D672;">
+                <div class="metric-title">🚛 Expedição</div>
+                <div class="metric-value">{vol_hoje:,.0f} <span style="font-size:1rem;">t</span></div>
+                <div class="metric-sub">Prev: {prev_carr:,.0f} t</div>
+            </div>
+            <div class="metric-card" style="flex: 1; border-bottom: 3px solid #3498DB;">
+                <div class="metric-title">🏭 Produção</div>
+                <div class="metric-value">{prod_hoje:,.0f} <span style="font-size:1rem;">t</span></div>
+                <div class="metric-sub">Prev: {prev_prod:,.0f} t</div>
+            </div>
+        </div>
+        <div class="metric-card" style="border-bottom: 3px solid #E5B800;">
+            <div class="metric-title">📦 Estoque Total</div>
+            <div class="metric-value">{estoque_total:,.0f} <span style="font-size:1rem;">t</span></div>
+        </div>
+    """, unsafe_allow_html=True)
 
     # -------------------------------------------------------------------------
-    # 🔥 NOVO GRÁFICO: EXPEDIÇÃO SEGREGADA POR TURNO (BAR CHART)
+    # 🔥 GRÁFICO DE TURNOS ESCALADOS
     # -------------------------------------------------------------------------
-    st.write("---")
-    st.subheader("📊 Expedição por Turno")
-    
-    if volume_por_turno:
-        # Transforma o dicionário (ex: {"Turno C": 1500, "Turno B": 1200}) num DataFrame
-        df_vol = pd.DataFrame({
-            "Turno": list(volume_por_turno.keys()),
-            "Toneladas": list(volume_por_turno.values())
-        })
+    if dados_turnos and "turnos" in dados_turnos:
+        st.markdown("<h4 style='color:#3498DB; margin-top:20px; font-size:1rem;'>⏳ Expedição por Turno</h4>", unsafe_allow_html=True)
         
-        max_vol_turno = max(df_vol["Toneladas"]) if not df_vol.empty else 100
-        bars_vol = alt.Chart(df_vol).mark_bar(cornerRadius=4).encode(
-            x=alt.X("Turno:N", sort=None, title="", axis=alt.Axis(labelAngle=0)),
-            y=alt.Y("Toneladas:Q", title="Toneladas", scale=alt.Scale(domain=[0, max_vol_turno * 1.2])),
-            color=alt.Color("Turno:N", legend=None, scale=alt.Scale(range=["#3498DB", "#8e44ad", "#e67e22", "#16a085"])),
-            tooltip=["Turno", "Toneladas"]
+        turnos_list = dados_turnos["turnos"]
+        ativo_key = dados_turnos.get("ativo_key")
+        
+        # Constrói o DataFrame para o gráfico
+        data_grafico = []
+        for t in turnos_list:
+            data_grafico.append({
+                "Turno": f"{t['letra']} ({t['horario'].split('-')[0].strip()})",
+                "Toneladas": t["vol"],
+                "Cor": "#FF9F1C" if t["key"] == ativo_key else "#3498DB" # Laranja se ativo, Azul se inativo
+            })
+            
+        df_vol = pd.DataFrame(data_grafico)
+        max_vol = max(df_vol["Toneladas"]) if not df_vol.empty and max(df_vol["Toneladas"]) > 0 else 100
+        
+        bars = alt.Chart(df_vol).mark_bar(cornerRadius=6).encode(
+            x=alt.X("Turno:N", sort=None, axis=alt.Axis(labelAngle=0, labelColor="#94a3b8", title=None)),
+            y=alt.Y("Toneladas:Q", scale=alt.Scale(domain=[0, max_vol * 1.3]), axis=None),
+            color=alt.Color("Cor:N", scale=None) # Usa a cor exata definida na coluna
         )
-        text_vol = bars_vol.mark_text(align='center', baseline='bottom', dy=-5, color='white', fontSize=13, fontWeight='bold').encode(
-            text=alt.Text('Toneladas:Q', format=',.1f')
+        
+        text = bars.mark_text(align='center', baseline='bottom', dy=-5, color='white', fontSize=14, fontWeight='bold').encode(
+            text=alt.Text('Toneladas:Q', format=',.0f')
         )
-        chart_vol = (bars_vol + text_vol).properties(height=260)
+        
+        chart_vol = (bars + text).properties(height=220, background="transparent")
         st.altair_chart(chart_vol, use_container_width=True)
     else:
-        st.info("A aguardar dados segregados por turno. O A.L.O.V.E Core precisa enviar a chave 'volume_por_turno' para a Cache_Painel.")
+        st.info("Aguardando o A.L.O.V.E Core calcular e enviar a escala de turnos.")
 
-    st.write("---")
-    st.subheader("Indicadores de Qualidade")
+    # -------------------------------------------------------------------------
+    # 3. Qualidade
+    # -------------------------------------------------------------------------
+    st.markdown("<h4 style='color:#3498DB; margin-top:10px; font-size:1rem;'>⚙️ Qualidade MS1 & MS2</h4>", unsafe_allow_html=True)
     if qualidade:
         for maq in ["MS1", "MS2"]:
-            st.markdown(f"**{maq}** (MAT: {qualidade.get(maq, {}).get('material', '--')})")
             q_suj = qualidade.get(maq, {}).get('sujidade', 0.0)
             q_visc = qualidade.get(maq, {}).get('viscosidade', 0.0)
             q_teor = qualidade.get(maq, {}).get('teor', 0.0)
             
-            c_q1, c_q2, c_q3 = st.columns(3)
-            with c_q1:
-                st.markdown(f"<div style='font-size: 1rem; color: #a0a0a0;'>Sujidade</div>", unsafe_allow_html=True)
-                st.markdown(f"<div style='font-size: 1.4rem;'>{q_suj:.2f}</div>", unsafe_allow_html=True)
-                st.markdown(f"<div style='font-size: 0.75rem; color: #6c757d; margin-top: -5px;'>Máx: 2.5</div>", unsafe_allow_html=True)
-            with c_q2:
-                st.markdown(f"<div style='font-size: 1rem; color: #a0a0a0;'>Viscosidade</div>", unsafe_allow_html=True)
-                st.markdown(f"<div style='font-size: 1.4rem;'>{q_visc:,.0f}</div>", unsafe_allow_html=True)
-                st.markdown(f"<div style='font-size: 0.75rem; color: #6c757d; margin-top: -5px;'>Mín: 650</div>", unsafe_allow_html=True)
-            with c_q3:
-                st.markdown(f"<div style='font-size: 1rem; color: #a0a0a0;'>Teor Seco</div>", unsafe_allow_html=True)
-                st.markdown(f"<div style='font-size: 1.4rem;'>{q_teor:.2f}%</div>", unsafe_allow_html=True)
-                st.markdown(f"<div style='font-size: 0.75rem; color: #6c757d; margin-top: -5px;'>Mín: 88.5%</div>", unsafe_allow_html=True)
-            st.write("")
-    else:
-        st.info("Aba Cache_Painel (qualidade) indisponível.")
+            st.markdown(f"""
+                <div style="background-color: #111c2e; border: 1px solid #1c2b42; border-radius: 8px; padding: 10px; margin-bottom: 10px;">
+                    <div style="color:#3498DB; font-weight:800; margin-bottom: 8px;">{maq} <span style="color:#FF9F1C; font-size:0.85rem; float:right;">MAT: {qualidade.get(maq, {}).get('material', '--')}</span></div>
+                    <div style="display: flex; justify-content: space-between; text-align: center;">
+                        <div>
+                            <div style="font-size:0.75rem; color:#94a3b8;">Sujidade</div>
+                            <div style="font-size:1.1rem; font-weight:bold; color:#00D672;">{q_suj:.2f}</div>
+                        </div>
+                        <div>
+                            <div style="font-size:0.75rem; color:#94a3b8;">Viscosidade</div>
+                            <div style="font-size:1.1rem; font-weight:bold; color:#00D672;">{q_visc:,.0f}</div>
+                        </div>
+                        <div>
+                            <div style="font-size:0.75rem; color:#94a3b8;">Teor Seco</div>
+                            <div style="font-size:1.1rem; font-weight:bold; color:#00D672;">{q_teor:.2f}%</div>
+                        </div>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
 
 # ==============================================================================
-# ABA 3: FROTA & GLP
+# ABA 3: FROTA E GLP
 # ==============================================================================
-with tab_frota_glp:
-    st.subheader("Alocação de Equipamentos")
+with tab_frota:
+    st.markdown("<h4 style='color:#3498DB; font-size:1rem;'>🚜 Alocação de Equipamentos</h4>", unsafe_allow_html=True)
     df_frota = carregar_dados("Rodizio_Frota")
 
     if not df_frota.empty:
         col_turno = "TURNO_JANELA" if "TURNO_JANELA" in df_frota.columns else df_frota.columns[0]
-        if col_turno in df_frota.columns:
-            turnos = df_frota[col_turno].dropna().unique().tolist()
-            hora_atual = datetime.now().hour
-            idx_sug = 0
-            for i, t in enumerate(turnos):
-                if "00:00" in str(t) and (0 <= hora_atual < 8): idx_sug = i
-                elif "08:00" in str(t) and (8 <= hora_atual < 16): idx_sug = i
-                elif "16:00" in str(t) and (16 <= hora_atual <= 23): idx_sug = i
-            turno_sel = st.selectbox("Turno / Janela:", turnos, index=idx_sug)
-            df_f = df_frota[df_frota[col_turno] == turno_sel]
+        turnos = df_frota[col_turno].dropna().unique().tolist()
+        hora_atual = datetime.now().hour
+        idx_sug = next((i for i, t in enumerate(turnos) if ("00:00" in str(t) and 0 <= hora_atual < 8) or ("08:00" in str(t) and 8 <= hora_atual < 16) or ("16:00" in str(t) and 16 <= hora_atual <= 23)), 0)
+        
+        turno_sel = st.selectbox("Selecione o Turno:", turnos, index=idx_sug)
+        df_f = df_frota[df_frota[col_turno] == turno_sel]
 
-            carr_op = df_f[(df_f["POSTO"].astype(str).str.contains("CARREG", case=False)) & (df_f["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
-            linha_op = df_f[(df_f["POSTO"].astype(str).str.contains("LINHA", case=False)) & (df_f["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
-            paradas = df_f[df_f["STATUS_RODIZIO"].astype(str).str.contains("STAND", case=False)]["EQUIPAMENTO"].tolist()
+        carr_op = df_f[(df_f["POSTO"].astype(str).str.contains("CARREG", case=False)) & (df_f["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
+        linha_op = df_f[(df_f["POSTO"].astype(str).str.contains("LINHA", case=False)) & (df_f["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
+        paradas = df_f[df_f["STATUS_RODIZIO"].astype(str).str.contains("STAND", case=False)]["EQUIPAMENTO"].tolist()
 
-            st.markdown("🟢 **Em Operação — CARREGAMENTO:**")
-            if carr_op: st.markdown(" ".join([f'<span class="tag-box tag-op">{tag}</span>' for tag in carr_op]), unsafe_allow_html=True)
-            else: st.caption("Nenhum.")
+        st.markdown("**🟢 Carregamento:**")
+        st.markdown(" ".join([f'<span class="tag-box tag-op">{t}</span>' for t in carr_op]) if carr_op else "<span style='color:gray; font-size:0.85rem;'>Nenhum</span>", unsafe_allow_html=True)
 
-            st.markdown("<br>🟢 **Em Operação — LINHA:**", unsafe_allow_html=True)
-            if linha_op: st.markdown(" ".join([f'<span class="tag-box tag-op">{tag}</span>' for tag in linha_op]), unsafe_allow_html=True)
-            else: st.caption("Nenhum.")
+        st.markdown("<br>**🟢 Abastecimento de Linha:**", unsafe_allow_html=True)
+        st.markdown(" ".join([f'<span class="tag-box tag-op">{t}</span>' for t in linha_op]) if linha_op else "<span style='color:gray; font-size:0.85rem;'>Nenhum</span>", unsafe_allow_html=True)
 
-            st.markdown("<br>🔴 **Stand-by / Paradas:**", unsafe_allow_html=True)
-            if paradas: st.markdown(" ".join([f'<span class="tag-box tag-standby">{tag}</span>' for tag in paradas]), unsafe_allow_html=True)
-            else: st.caption("Nenhum.")
-            
-    st.write("---")
-    st.subheader("⛽ Consumo Mensal de GLP")
-    
-    df_glp = carregar_dados("Abastecimentos_GLP", cabecalho=None)
-    
-    if not df_glp.empty:
-        try:
-            df_g = pd.DataFrame()
-            df_g["DATA_DT"] = pd.to_datetime(df_glp.iloc[:, 2].astype(str).str.strip(), format="%d/%m/%Y", errors="coerce")
-            df_g["MES_ANO"] = df_g["DATA_DT"].dt.strftime("%m/%Y")
-            df_g["MAQUINA"] = df_glp.iloc[:, 5].astype(str).str.strip()
-            df_g["KG_NUM"] = df_glp.iloc[:, 7].apply(safe_to_numeric)
-            
-            meses_disp = df_g["MES_ANO"].dropna().unique().tolist()
-            if meses_disp:
-                meses_disp.sort(key=lambda x: datetime.strptime(x, "%m/%Y"))
-                mes_sel = st.selectbox("Mês Referência:", meses_disp, index=len(meses_disp)-1)
-                
-                df_mes = df_g[df_g["MES_ANO"] == mes_sel]
-                total_kg = df_mes["KG_NUM"].sum()
-                
-                st.metric(f"Total Abastecido ({mes_sel})", f"{total_kg:,.1f} kg")
-                
-                st.markdown("##### Consumo por Máquina (kg)")
-                df_maq = df_mes.groupby("MAQUINA")["KG_NUM"].sum().reset_index()
-                df_maq.columns = ["Máquina", "Consumo (kg)"]
-                
-                chart_glp = alt.Chart(df_maq).mark_bar(color="#fd7e14", cornerRadius=4).encode(
-                    x=alt.X("Máquina:N", sort="-y", title="Máquina"),
-                    y=alt.Y("Consumo (kg):Q", title="Quilos"),
-                    tooltip=["Máquina", "Consumo (kg)"]
-                ).properties(height=260)
-                st.altair_chart(chart_glp, use_container_width=True)
-            else:
-                st.info("Não foi possível processar as datas do GLP.")
-        except Exception as e:
-            st.error(f"Erro no processamento do GLP: {e}")
+        st.markdown("<br>**🔴 Stand-by / Paradas:**", unsafe_allow_html=True)
+        st.markdown(" ".join([f'<span class="tag-box tag-standby">{t}</span>' for t in paradas]) if paradas else "<span style='color:gray; font-size:0.85rem;'>Nenhum</span>", unsafe_allow_html=True)
     else:
-        st.info("Aba Abastecimentos_GLP indisponível.")
-
-st.caption("A.L.O.V.E. Mobile Dashboard")
+        st.info("Planilha Rodizio_Frota indisponível.")
