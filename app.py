@@ -35,68 +35,26 @@ st.markdown("""
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
             border-left: 6px solid #3498DB;
         }
-        .master-metric-title {
-            color: #94a3b8;
-            font-size: 0.82rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .master-metric-val {
-            color: #ffffff;
-            font-size: 1.8rem;
-            font-weight: 900;
-            line-height: 1.2;
-            margin: 2px 0;
-        }
-        .master-metric-sub {
-            font-size: 0.82rem;
-            font-weight: 700;
-        }
+        .master-metric-title { color: #94a3b8; font-size: 0.82rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+        .master-metric-val { color: #ffffff; font-size: 1.8rem; font-weight: 900; line-height: 1.2; margin: 2px 0; }
+        .master-metric-sub { font-size: 0.82rem; font-weight: 700; }
 
         /* Grid do Pátio Retrátil */
-        .patio-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
-            margin-top: 10px;
-        }
-        .card-patio-sub {
-            background-color: #0a101d;
-            border-radius: 8px;
-            padding: 10px;
-            border-left: 4px solid;
-            border: 1px solid #1c2b42;
-        }
+        .patio-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 10px; }
+        .card-patio-sub { background-color: #0a101d; border-radius: 8px; padding: 10px; border-left: 4px solid; border: 1px solid #1c2b42; }
         .card-patio-title { font-weight: 800; font-size: 0.9rem; margin-bottom: 2px; }
         .card-patio-qtd { font-size: 1.3rem; font-weight: 900; color: #ffffff; }
         .card-patio-ton { font-size: 0.8rem; color: #94a3b8; font-weight: 600; }
 
         /* Estilização dos Expanders nativos */
-        div[data-testid="stExpander"] {
-            border: 1px solid #1c2b42 !important;
-            background-color: #111c2e !important;
-            border-radius: 10px !important;
-            margin-bottom: 16px !important;
-        }
-        div[data-testid="stExpander"] details summary {
-            padding: 8px 12px !important;
-            font-weight: bold !important;
-            color: #38bdf8 !important;
-        }
+        div[data-testid="stExpander"] { border: 1px solid #1c2b42 !important; background-color: #111c2e !important; border-radius: 10px !important; margin-bottom: 16px !important; }
+        div[data-testid="stExpander"] details summary { padding: 8px 12px !important; font-weight: bold !important; color: #38bdf8 !important; }
 
         /* Tags Frota */
-        .tag-box {
-            display: inline-block;
-            padding: 6px 12px;
-            margin: 4px;
-            border-radius: 8px;
-            font-weight: 800;
-            font-size: 0.85rem;
-            text-align: center;
-        }
+        .tag-box { display: inline-block; padding: 6px 12px; margin: 4px; border-radius: 8px; font-weight: 800; font-size: 0.85rem; text-align: center; }
         .tag-op { background-color: #00D672; color: #0a101d; }
         .tag-standby { background-color: #E74C3C; color: #ffffff; }
+        .tag-talha { background-color: #F39C12; color: #0a101d; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -116,14 +74,8 @@ def carregar_dados_nuvem(worksheet_name: str, cabecalho=0):
 def safe_to_numeric(val):
     if pd.isna(val): return 0.0
     if isinstance(val, (int, float)): return float(val)
-    try:
-        s_val = str(val).strip()
-        if not s_val: return 0.0
-        if "," in s_val:
-            s_val = s_val.replace(".", "").replace(",", ".")
-        return float(s_val)
-    except Exception:
-        return 0.0
+    try: return float(str(val).strip().replace(".", "").replace(",", "."))
+    except: return 0.0
 
 def descobrir_letras_turnos(data_alvo):
     data_referencia = datetime(2026, 9, 22).date()
@@ -136,14 +88,10 @@ def descobrir_letras_turnos(data_alvo):
 
 @st.cache_data(ttl=60)
 def buscar_dados_turnos_direto():
-    """
-    O Mobile calcula os turnos por conta própria acessando a planilha pública,
-    sem precisar que o A.L.O.V.E Core envie isso na chave do Cache_Painel!
-    """
+    """ O Mobile calcula os turnos autônomamente sem depender do Core! """
     agora_br = datetime.utcnow() - timedelta(hours=3)
     hoje_date = agora_br.date()
     turno_d_ativo = agora_br.weekday() not in (0, 6)
-
     letras = descobrir_letras_turnos(hoje_date)
     
     if agora_br.hour < 8: ativo_key = "t1" if turno_d_ativo else None
@@ -173,35 +121,27 @@ def buscar_dados_turnos_direto():
                         corte_16 = vol_linha
                     if corte_08 == 0.0 and dt_row <= hora_08 and dt_row.date() == hoje_date:
                         corte_08 = vol_linha
-                except:
-                    continue
+                except: continue
 
         vol_t1 = corte_08 if (corte_08 > 0 and turno_d_ativo) else 0.0
         vol_t2 = max(0.0, corte_16 - corte_08) if agora_br.hour >= 16 else (max(0.0, vol_atual - corte_08) if agora_br.hour >= 8 else 0.0)
         vol_t3 = max(0.0, vol_atual - corte_16) if agora_br.hour >= 16 else 0.0
 
         turnos_exibir = []
-        if turno_d_ativo:
-            turnos_exibir.append({"key": "t1", "letra": f"Turno {letras['madrugada']}", "vol": vol_t1, "horario": "00h - 08h"})
+        if turno_d_ativo: turnos_exibir.append({"key": "t1", "letra": f"Turno {letras['madrugada']}", "vol": vol_t1, "horario": "00h - 08h"})
         turnos_exibir.append({"key": "t2", "letra": f"Turno {letras['08_16']}", "vol": vol_t2, "horario": "08h - 16h"})
         turnos_exibir.append({"key": "t3", "letra": f"Turno {letras['16_00']}", "vol": vol_t3, "horario": "16h - 00h"})
-
         return {"ativo_key": ativo_key, "turnos": turnos_exibir}
-    except Exception:
-        return None
+    except Exception: return None
 
 # ==============================================================================
-# 🔥 RESGATE DOS DADOS DA NUVEM (CACHE_PAINEL)
+# 🔥 RESGATE DOS DADOS DA NUVEM & CÁLCULOS
 # ==============================================================================
 df_cache = carregar_dados_nuvem("Cache_Painel", cabecalho=0)
 cache_dict = {str(row.iloc[0]).strip(): str(row.iloc[1]).strip() for _, row in df_cache.iterrows()} if not df_cache.empty else {}
 
-# Decodificação dos JSONs (Tudo isso o Core JÁ ENVIA hoje)
 dados_patio = json.loads(cache_dict.get("dados_patio", "{}")) if cache_dict.get("dados_patio") else {}
 qualidade = json.loads(cache_dict.get("qualidade", "{}")) if cache_dict.get("qualidade") else {}
-dados_segregados = json.loads(cache_dict.get("dados_segregados", "{}")) if cache_dict.get("dados_segregados") else {}
-
-# Busca Turnos Autônoma do Celular
 dados_turnos = buscar_dados_turnos_direto()
 
 vol_hoje = safe_to_numeric(cache_dict.get("vol_hoje", 0))
@@ -213,17 +153,33 @@ prod_ms1 = safe_to_numeric(qualidade.get("MS1", {}).get("producao", 0))
 prod_ms2 = safe_to_numeric(qualidade.get("MS2", {}).get("producao", 0))
 prod_hoje = prod_ms1 + prod_ms2
 
-# Cálculos de Previsão UTC-3
 agora = datetime.utcnow() - timedelta(hours=3)
 horas_passadas_prod = max(0.1, agora.hour + (agora.minute / 60.0))
 prev_prod = (prod_hoje / horas_passadas_prod) * 24
 
 horas_produtivas = sum((1.0 if h > agora.hour else (1.0 - (agora.minute / 60.0))) * (0.0 if 0 <= h < 8 and agora.weekday() in (0, 6) else (6.25 / 8.0)) for h in range(agora.hour, 24))
 cap_maxima_restante = horas_produtivas * 500.0
-vol_patio_real = sum(dados_patio.get(k, {}).get("peso", 0.0) for k in ["PR", "00", "01", "FC"]) if dados_patio else 0.0
-prev_carr = vol_hoje + min(cap_maxima_restante, vol_patio_real)
 
-total_veiculos_patio = sum(dados_patio.get(k, {}).get("veiculos", 0) for k in ["PR", "00", "01", "FC", "TR"]) if dados_patio else 0
+# Regras do Pátio (PR fica de fora dos disponíveis e do físico)
+vol_patio_disponivel = sum(dados_patio.get(k, {}).get("peso", 0.0) for k in ["00", "01", "FC"]) if dados_patio else 0.0
+total_veiculos_fisicos = sum(dados_patio.get(k, {}).get("veiculos", 0) for k in ["00", "01", "FC", "TR"]) if dados_patio else 0
+prev_carr = vol_hoje + min(cap_maxima_restante, vol_patio_disponivel)
+
+# Carga de Equipamentos (Frota)
+df_frota = carregar_dados_nuvem("Rodizio_Frota")
+equip_em_uso = 0
+equip_standby = 0
+df_f_atual = pd.DataFrame()
+
+if not df_frota.empty:
+    col_turno = "TURNO_JANELA" if "TURNO_JANELA" in df_frota.columns else df_frota.columns[0]
+    turnos = df_frota[col_turno].dropna().unique().tolist()
+    hora_atual = agora.hour
+    idx_sug = next((i for i, t in enumerate(turnos) if ("00:00" in str(t) and 0 <= hora_atual < 8) or ("08:00" in str(t) and 8 <= hora_atual < 16) or ("16:00" in str(t) and 16 <= hora_atual <= 23)), 0)
+    turno_atual_str = turnos[idx_sug] if turnos else ""
+    df_f_atual = df_frota[df_frota[col_turno] == turno_atual_str]
+    equip_em_uso = len(df_f_atual[df_f_atual["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False)])
+    equip_standby = len(df_f_atual[df_f_atual["STATUS_RODIZIO"].astype(str).str.contains("STAND", case=False)])
 
 # ==============================================================================
 # CABEÇALHO SUPERIOR
@@ -255,8 +211,8 @@ st.write("")
 st.markdown(f"""
     <div class="master-metric-box" style="border-left-color: #38bdf8;">
         <div class="master-metric-title">🚛 Pátio da Fábrica (Tempo Real)</div>
-        <div class="master-metric-val">{total_veiculos_patio} <span style="font-size:1.1rem; color:#94a3b8;">Veículos</span></div>
-        <div class="master-metric-sub" style="color: #38bdf8;">Disponível p/ Carregar: {vol_patio_real:,.0f} t</div>
+        <div class="master-metric-val">{total_veiculos_fisicos} <span style="font-size:1.1rem; color:#94a3b8;">Veículos Físicos</span></div>
+        <div class="master-metric-sub" style="color: #38bdf8;">Disponível p/ Carregar: {vol_patio_disponivel:,.0f} t</div>
     </div>
 """, unsafe_allow_html=True)
 
@@ -269,6 +225,7 @@ with st.expander("🔍 Toque para ver o Pátio detalhado por Status"):
             ("✅ Fila", "FC", "#00D672"),
             ("📄 Termo SAP", "TR", "#3498DB"),
         ]
+        # Correção definitiva para o HTML (evita a fuga de formatação de código no Streamlit)
         html_p = '<div class="patio-grid">'
         for tit, chv, cor in blocos_patio:
             v_qtd = dados_patio.get(chv, {}).get("veiculos", 0)
@@ -283,16 +240,14 @@ with st.expander("🔍 Toque para ver o Pátio detalhado por Status"):
     else:
         st.caption("Sem dados de pátio disponíveis.")
 
-st.write("")
-
 # ==============================================================================
 # 🏭 BLOCO 2: PRODUÇÃO DO DIA & QUALIDADE (CLICÁVEL)
 # ==============================================================================
 st.markdown(f"""
-    <div class="master-metric-box" style="border-left-color: #3498DB;">
+    <div class="master-metric-box" style="border-left-color: #E5B800;">
         <div class="master-metric-title">🏭 Produção de Celulose (Hoje)</div>
         <div class="master-metric-val">{prod_hoje:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div>
-        <div class="master-metric-sub" style="color: #3498DB;">Previsão de Fechamento: {prev_prod:,.0f} t</div>
+        <div class="master-metric-sub" style="color: #E5B800;">Previsão de Fechamento: {prev_prod:,.0f} t</div>
     </div>
 """, unsafe_allow_html=True)
 
@@ -331,8 +286,6 @@ with st.expander("🔍 Toque para ver Produção por Máquina & Qualidade"):
     else:
         st.caption("Sem dados de máquinas disponíveis.")
 
-st.write("")
-
 # ==============================================================================
 # 🚚 BLOCO 3: EXPEDIÇÃO DO DIA & TURNOS (CLICÁVEL)
 # ==============================================================================
@@ -349,105 +302,70 @@ with st.expander("🔍 Toque para ver Expedição Separada por Turno"):
         turnos_list = dados_turnos["turnos"]
         ativo_key = dados_turnos.get("ativo_key")
 
-        # 1. Resumo em Cards Pequenos
+        # HTML seguro e em linha para evitar a fuga do interpretador Markdown
         html_t_cards = '<div style="display:flex; gap:6px; margin-bottom:12px;">'
         for t in turnos_list:
             is_atv = (t["key"] == ativo_key)
             cor_b = "#FF9F1C" if is_atv else "#1c2b42"
             cor_txt = "#FF9F1C" if is_atv else "#ffffff"
             sub_txt = f"{t['horario']} (ATIVO)" if is_atv else t['horario']
-            html_t_cards += f"""
-                <div style="flex:1; background-color:#0a101d; border:1.5px solid {cor_b}; border-radius:8px; padding:8px; text-align:center;">
-                    <div style="font-size:0.75rem; font-weight:800; color:{cor_txt};">{t['letra']}</div>
-                    <div style="font-size:1.1rem; font-weight:900; color:#ffffff;">{t['vol']:,.0f} t</div>
-                    <div style="font-size:0.65rem; color:#94a3b8;">{sub_txt}</div>
-                </div>
-            """
+            html_t_cards += f'<div style="flex:1; background-color:#0a101d; border:1.5px solid {cor_b}; border-radius:8px; padding:8px; text-align:center;">'
+            html_t_cards += f'<div style="font-size:0.75rem; font-weight:800; color:{cor_txt};">{t["letra"]}</div>'
+            html_t_cards += f'<div style="font-size:1.1rem; font-weight:900; color:#ffffff;">{t["vol"]:,.0f} t</div>'
+            html_t_cards += f'<div style="font-size:0.65rem; color:#94a3b8;">{sub_txt}</div>'
+            html_t_cards += '</div>'
         html_t_cards += '</div>'
         st.markdown(html_t_cards, unsafe_allow_html=True)
 
-        # 2. Gráfico Visual
-        data_grafico = []
-        for t in turnos_list:
-            data_grafico.append({
-                "Turno": f"{t['letra']}",
-                "Toneladas": t["vol"],
-                "Cor": "#FF9F1C" if t["key"] == ativo_key else "#3498DB"
-            })
-            
+        # Gráfico
+        data_grafico = [{"Turno": t['letra'], "Toneladas": t["vol"], "Cor": "#FF9F1C" if t["key"] == ativo_key else "#3498DB"} for t in turnos_list]
         df_vol = pd.DataFrame(data_grafico)
         max_vol = max(df_vol["Toneladas"]) if not df_vol.empty and max(df_vol["Toneladas"]) > 0 else 100
-        
         bars = alt.Chart(df_vol).mark_bar(cornerRadius=6).encode(
             x=alt.X("Turno:N", sort=None, axis=alt.Axis(labelAngle=0, labelColor="#ffffff", title=None)),
             y=alt.Y("Toneladas:Q", scale=alt.Scale(domain=[0, max_vol * 1.3]), axis=None),
             color=alt.Color("Cor:N", scale=None) 
         )
-        text = bars.mark_text(align='center', baseline='bottom', dy=-5, color='white', fontSize=13, fontWeight='bold').encode(
-            text=alt.Text('Toneladas:Q', format=',.0f')
-        )
+        text = bars.mark_text(align='center', baseline='bottom', dy=-5, color='white', fontSize=13, fontWeight='bold').encode(text=alt.Text('Toneladas:Q', format=',.0f'))
         chart_vol = (bars + text).properties(height=180, background="transparent")
         st.altair_chart(chart_vol, use_container_width=True)
     else:
         st.caption("Aguardando carregamento da escala de turnos.")
 
 # ==============================================================================
-# 📦 BLOCO 4: ESTOQUE TOTAL & MATERIAIS
+# 🚜 BLOCO 4: ALOCAÇÃO DE EQUIPAMENTOS (CLICÁVEL)
 # ==============================================================================
-st.markdown("<hr style='border:0; height:1px; background:#1c2b42; margin:20px 0;'>", unsafe_allow_html=True)
-
 st.markdown(f"""
-    <div style="background-color: #111c2e; border: 1px solid #1c2b42; border-radius: 10px; padding: 12px; text-align: center; margin-bottom: 15px;">
-        <span style="font-size: 0.8rem; color: #E5B800; font-weight: 800; text-transform: uppercase;">📦 Estoque Total no Armazém</span>
-        <div style="font-size: 1.8rem; font-weight: 900; color: #ffffff;">{estoque_total:,.0f} <span style="font-size:1rem; color:#94a3b8;">TON</span></div>
+    <div class="master-metric-box" style="border-left-color: #E67E22;">
+        <div class="master-metric-title">🚜 Máquinas e Equipamentos</div>
+        <div class="master-metric-val">{equip_em_uso} <span style="font-size:1.1rem; color:#94a3b8;">Em Operação</span></div>
+        <div class="master-metric-sub" style="color: #E67E22;">Stand-by / Parados: {equip_standby}</div>
     </div>
 """, unsafe_allow_html=True)
 
-with st.expander("🔍 Toque para ver Estoque Detalhado por Material"):
-    if dados_segregados:
-        df_seg = pd.DataFrame(list(dados_segregados.items()), columns=["Material", "Toneladas"])
-        df_seg = df_seg.sort_values(by="Toneladas", ascending=False)
+with st.expander("🔍 Toque para ver Frota e Talhas"):
+    if not df_frota.empty and not df_f_atual.empty:
+        # Separa a carga das empilhadeiras e talhas
+        carr_op = df_f_atual[(df_f_atual["POSTO"].astype(str).str.contains("CARREG", case=False)) & (df_f_atual["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
+        linha_op = df_f_atual[(df_f_atual["POSTO"].astype(str).str.contains("LINHA", case=False)) & (df_f_atual["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
         
-        bars_seg = alt.Chart(df_seg).mark_bar(cornerRadius=4).encode(
-            x=alt.X("Material:N", sort="-y", axis=alt.Axis(labelAngle=-45, labelColor="#94a3b8", title=None)),
-            y=alt.Y("Toneladas:Q", axis=None),
-            color=alt.value("#38bdf8")
-        )
-        text_seg = bars_seg.mark_text(align='center', baseline='bottom', dy=-3, color='white', fontSize=11, fontWeight='bold').encode(text=alt.Text('Toneladas:Q', format=',.0f'))
-        chart_seg = (bars_seg + text_seg).properties(height=200, background="transparent")
-        st.altair_chart(chart_seg, use_container_width=True)
+        # Filtra Talhas (Tanto no nome quanto no posto)
+        talhas_op = df_f_atual[(df_f_atual["POSTO"].astype(str).str.contains("TALHA", case=False) | df_f_atual["EQUIPAMENTO"].astype(str).str.contains("TALHA", case=False)) & (df_f_atual["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
+        
+        paradas = df_f_atual[df_f_atual["STATUS_RODIZIO"].astype(str).str.contains("STAND", case=False)]["EQUIPAMENTO"].tolist()
+
+        st.markdown("**🟢 Empilhadeiras - Carregamento:**")
+        st.markdown(" ".join([f'<span class="tag-box tag-op">{t}</span>' for t in carr_op]) if carr_op else "<span style='color:gray; font-size:0.85rem;'>Nenhum</span>", unsafe_allow_html=True)
+
+        st.markdown("<br>**🟢 Empilhadeiras - Linha:**", unsafe_allow_html=True)
+        st.markdown(" ".join([f'<span class="tag-box tag-op">{t}</span>' for t in linha_op]) if linha_op else "<span style='color:gray; font-size:0.85rem;'>Nenhum</span>", unsafe_allow_html=True)
+
+        st.markdown("<br>**🏗️ Ponte Rolante / Talhas:**", unsafe_allow_html=True)
+        st.markdown(" ".join([f'<span class="tag-box tag-talha">{t}</span>' for t in talhas_op]) if talhas_op else "<span style='color:gray; font-size:0.85rem;'>Nenhuma Talha operando</span>", unsafe_allow_html=True)
+
+        st.markdown("<br>**🔴 Stand-by / Paradas:**", unsafe_allow_html=True)
+        st.markdown(" ".join([f'<span class="tag-box tag-standby">{t}</span>' for t in paradas]) if paradas else "<span style='color:gray; font-size:0.85rem;'>Nenhum</span>", unsafe_allow_html=True)
     else:
-        st.caption("Aguardando detalhamento de material do SAP.")
-
-# ==============================================================================
-# 🚜 SESSÃO 5: FROTA
-# ==============================================================================
-st.markdown("<hr>", unsafe_allow_html=True)
-st.markdown("<h4 style='color:#3498DB; font-size:1rem;'>🚜 Alocação de Equipamentos</h4>", unsafe_allow_html=True)
-df_frota = carregar_dados_nuvem("Rodizio_Frota")
-
-if not df_frota.empty:
-    col_turno = "TURNO_JANELA" if "TURNO_JANELA" in df_frota.columns else df_frota.columns[0]
-    turnos = df_frota[col_turno].dropna().unique().tolist()
-    hora_atual = datetime.now().hour
-    idx_sug = next((i for i, t in enumerate(turnos) if ("00:00" in str(t) and 0 <= hora_atual < 8) or ("08:00" in str(t) and 8 <= hora_atual < 16) or ("16:00" in str(t) and 16 <= hora_atual <= 23)), 0)
-    
-    turno_sel = st.selectbox("Selecione o Turno:", turnos, index=idx_sug)
-    df_f = df_frota[df_frota[col_turno] == turno_sel]
-
-    carr_op = df_f[(df_f["POSTO"].astype(str).str.contains("CARREG", case=False)) & (df_f["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
-    linha_op = df_f[(df_f["POSTO"].astype(str).str.contains("LINHA", case=False)) & (df_f["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
-    paradas = df_f[df_f["STATUS_RODIZIO"].astype(str).str.contains("STAND", case=False)]["EQUIPAMENTO"].tolist()
-
-    st.markdown("**🟢 Carregamento:**")
-    st.markdown(" ".join([f'<span class="tag-box tag-op">{t}</span>' for t in carr_op]) if carr_op else "<span style='color:gray; font-size:0.85rem;'>Nenhum</span>", unsafe_allow_html=True)
-
-    st.markdown("<br>**🟢 Abastecimento de Linha:**", unsafe_allow_html=True)
-    st.markdown(" ".join([f'<span class="tag-box tag-op">{t}</span>' for t in linha_op]) if linha_op else "<span style='color:gray; font-size:0.85rem;'>Nenhum</span>", unsafe_allow_html=True)
-
-    st.markdown("<br>**🔴 Stand-by / Paradas:**", unsafe_allow_html=True)
-    st.markdown(" ".join([f'<span class="tag-box tag-standby">{t}</span>' for t in paradas]) if paradas else "<span style='color:gray; font-size:0.85rem;'>Nenhum</span>", unsafe_allow_html=True)
-else:
-    st.caption("Planilha Rodizio_Frota indisponível.")
+        st.caption("Planilha Rodizio_Frota indisponível.")
 
 st.markdown("<br><center><span style='color:#94a3b8; font-size: 0.75rem;'>Logística MI | A.L.O.V.E Core Mobile Dashboard</span></center>", unsafe_allow_html=True)
