@@ -16,7 +16,7 @@ st.set_page_config(
 )
 
 # ==============================================================================
-# 🎨 CSS AVANÇADO (CARDS 100% CLICÁVEIS SEM EXPANDER DO STREAMLIT)
+# 🎨 CSS HÍBRIDO (CARD UNIFICADO COM EXPANDER COLADO)
 # ==============================================================================
 st.markdown("""
     <style>
@@ -27,100 +27,60 @@ st.markdown("""
             padding-right: 0.8rem;
         }
         
-        /* Oculta os checkboxes que farão a mágica do clique */
-        input[type="checkbox"].toggle-box { display: none; }
-        
-        /* Transforma o bloco inteiro em um botão gigante */
-        label.master-label { 
-            display: block; 
-            width: 100%; 
-            cursor: pointer; 
-            -webkit-tap-highlight-color: transparent; 
-        }
-        
-        .master-metric-box {
+        /* Card Mestre (Topo) - Desenhado para colar no Expander do Streamlit */
+        .card-topo {
             background-color: #111c2e;
-            border-radius: 12px;
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
             padding: 16px 20px;
-            border-left: 6px solid;
-            border-top: 1px solid #1c2b42;
-            border-right: 1px solid #1c2b42;
-            border-bottom: 1px solid #1c2b42;
+            border: 1px solid #1c2b42;
+            border-bottom: none;
+            margin-bottom: -15px !important; /* Puxa o expander para colar */
             position: relative;
             z-index: 10;
-            transition: border-radius 0.3s ease;
         }
-        
-        /* A setinha customizada que gira ao clicar */
-        .chevron { 
-            position: absolute; 
-            right: 20px; 
-            top: 50%; 
-            transform: translateY(-50%); 
-            font-size: 1.1rem; 
-            color: #94a3b8; 
-            transition: transform 0.3s ease; 
-        }
-        
-        /* O que acontece com o card quando está ABERTO */
-        div.element-container:has(input.toggle-box:checked) .master-metric-box {
-            border-bottom-left-radius: 0px;
-            border-bottom-right-radius: 0px;
-            border-bottom-color: transparent;
-        }
-        div.element-container:has(input.toggle-box:checked) .chevron { 
-            transform: translateY(-50%) rotate(180deg); 
-            color: #38bdf8;
-        }
-        
-        /* Oculta o conteúdo por padrão */
-        div.element-container:has(input.toggle-box) + div.element-container {
-            display: none;
-        }
-        
-        /* Exibe o conteúdo suavemente quando o card é clicado */
-        div.element-container:has(input.toggle-box:checked) + div.element-container {
-            display: block;
-            animation: slideDown 0.3s ease-out forwards;
-        }
-        
-        /* Estiliza a caixa de conteúdo que abre embaixo do card */
-        div.element-container:has(input.toggle-box:checked) + div.element-container > div {
-            background-color: #0a101d;
-            border-left: 1px solid #1c2b42;
-            border-right: 1px solid #1c2b42;
-            border-bottom: 1px solid #1c2b42;
-            border-radius: 0 0 12px 12px;
-            padding: 16px;
-            margin-top: -1.2rem;
-            padding-top: 1.5rem;
-            z-index: 1;
-            position: relative;
+        .card-title { color: #94a3b8; font-size: 0.85rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .card-val { color: #ffffff; font-size: 2rem; font-weight: 900; line-height: 1.1; margin-bottom: 4px; }
+        .card-sub { font-size: 0.85rem; font-weight: 700; }
+
+        /* Estilização do Expander Nativo do Streamlit */
+        div[data-testid="stExpander"] {
+            border: 1px solid #1c2b42 !important;
+            border-top: none !important;
+            border-radius: 0 0 12px 12px !important;
+            background-color: #0a101d !important;
+            margin-bottom: 25px !important;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
         }
-        
-        @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
+        div[data-testid="stExpander"] details summary {
+            background-color: #0d1522;
+            border-radius: 0 0 12px 12px;
+            padding: 10px 15px;
+            border-top: 1px dashed #1c2b42;
         }
-        
-        /* Tipografia do Card */
-        .master-metric-title { color: #94a3b8; font-size: 0.85rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; padding-right: 20px;}
-        .master-metric-val { color: #ffffff; font-size: 2rem; font-weight: 900; line-height: 1.1; margin-bottom: 4px; }
-        .master-metric-sub { font-size: 0.85rem; font-weight: 700; }
-        
-        /* Sub-estilos dos miolos */
+        div[data-testid="stExpander"] details[open] summary {
+            border-bottom: 1px solid #1c2b42;
+            border-radius: 0;
+            background-color: #0a101d;
+        }
+        div[data-testid="stExpander"] details summary p {
+            color: #38bdf8;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        /* Sub-estilos Internos */
         .patio-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
         .card-patio-sub { background-color: #111c2e; border-radius: 8px; padding: 10px; border-left: 4px solid; border: 1px solid #1c2b42;}
         .card-patio-title { font-weight: 800; font-size: 0.95rem; margin-bottom: 4px; }
         .card-patio-qtd { font-size: 1.4rem; font-weight: 900; color: #ffffff; }
         .card-patio-ton { font-size: 0.85rem; color: #94a3b8; font-weight: 600; }
-        
+
         .tag-box { display: inline-block; padding: 4px 10px; margin: 3px; border-radius: 6px; font-weight: 800; font-size: 0.8rem; text-align: center; }
         .tag-op { background-color: #00D672; color: #0a101d; }
         .tag-standby { background-color: #E74C3C; color: #ffffff; }
         .tag-talha { background-color: #F39C12; color: #0a101d; }
-        .shift-header { color: #3498DB; font-size: 0.9rem; font-weight: 800; border-bottom: 1px solid #1c2b42; padding-bottom: 4px; margin-top: 12px; margin-bottom: 8px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -132,22 +92,18 @@ def carregar_dados_nuvem(worksheet_name: str, cabecalho=0):
     url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={sheet_encoded}"
     try:
         df = pd.read_csv(url, header=cabecalho)
-        df = df.dropna(how="all", axis=1).dropna(how="all", axis=0)
-        return df
+        return df.dropna(how="all", axis=1).dropna(how="all", axis=0)
     except Exception: return pd.DataFrame()
 
-# 🔥 PROTEÇÃO ANTIBUG DE TONELAGEM (AGORA BLINDADO CONTRA 52.000T)
+# 🔥 PROTEÇÃO ANTIBUG DE TONELAGEM (ARRUMA VIRGULAS E PONTOS)
 def safe_to_numeric(val):
     if pd.isna(val) or val == "" or val is None: return 0.0
     if isinstance(val, (int, float)): return float(val)
     val_str = str(val).strip()
-    try: 
-        return float(val_str)
+    try: return float(val_str)
     except:
-        try: 
-            return float(val_str.replace(".", "").replace(",", "."))
-        except: 
-            return 0.0
+        try: return float(val_str.replace(".", "").replace(",", "."))
+        except: return 0.0
 
 def descobrir_letras_turnos(data_alvo):
     data_referencia = datetime(2026, 9, 22).date()
@@ -227,9 +183,11 @@ prev_prod = (prod_hoje / horas_passadas_prod) * 24
 horas_produtivas = sum((1.0 if h > agora.hour else (1.0 - (agora.minute / 60.0))) * (0.0 if 0 <= h < 8 and agora.weekday() in (0, 6) else (6.25 / 8.0)) for h in range(agora.hour, 24))
 cap_maxima_restante = horas_produtivas * 500.0
 
-# Pátio: PR é ignorado da carga DISPONÍVEL
-vol_patio_disponivel = sum(dados_patio.get(k, {}).get("peso", 0.0) for k in ["00", "01", "FC"]) if dados_patio else 0.0
+# Pátio Físico: (00 + 01 + FC + TR)
 total_veiculos_fisicos = sum(dados_patio.get(k, {}).get("veiculos", 0) for k in ["00", "01", "FC", "TR"]) if dados_patio else 0
+# Disponível p/ Carga: Somente 00 + 01 + FC (Ignora PR e TR)
+vol_patio_disponivel = sum(dados_patio.get(k, {}).get("peso", 0.0) for k in ["00", "01", "FC"]) if dados_patio else 0.0
+
 prev_carr = vol_hoje + min(cap_maxima_restante, vol_patio_disponivel)
 
 # ==============================================================================
@@ -254,22 +212,15 @@ st.write("")
 # ==============================================================================
 # 📦 BLOCO 1: PÁTIO DE VEÍCULOS
 # ==============================================================================
-html_patio = f"""
-<div>
-    <label class="master-label" for="chk-patio">
-        <div class="master-metric-box" style="border-left-color: #38bdf8;">
-            <span class="chevron">▼</span>
-            <div class="master-metric-title">🚛 Pátio da Fábrica (Tempo Real)</div>
-            <div class="master-metric-val">{total_veiculos_fisicos} <span style="font-size:1.1rem; color:#94a3b8;">Veículos Físicos</span></div>
-            <div class="master-metric-sub" style="color: #38bdf8;">Carga Disponível p/ Carregar: {vol_patio_disponivel:,.0f} t</div>
-        </div>
-    </label>
-    <input type="checkbox" id="chk-patio" class="toggle-box">
-</div>
-"""
-st.markdown(html_patio, unsafe_allow_html=True)
+st.markdown(f"""
+    <div class="card-topo" style="border-left-color: #38bdf8;">
+        <div class="card-title">🚛 Pátio da Fábrica (Tempo Real)</div>
+        <div class="card-val">{total_veiculos_fisicos} <span style="font-size:1.1rem; color:#94a3b8;">Veículos Físicos</span></div>
+        <div class="card-sub" style="color: #38bdf8;">Carga Disponível p/ Carregar: {vol_patio_disponivel:,.0f} t</div>
+    </div>
+""", unsafe_allow_html=True)
 
-with st.container():
+with st.expander("👇 Ver detalhamento por Status"):
     if dados_patio:
         blocos_patio = [("🚙 Prog/Chegando", "PR", "#94A3B8"), ("📋 Checklist", "00", "#E5B800"), ("🚛 Apoio", "01", "#E67E22"), ("✅ Fila", "FC", "#00D672"), ("📄 Termo SAP", "TR", "#3498DB")]
         html_p = '<div class="patio-grid">'
@@ -285,22 +236,15 @@ with st.container():
 # ==============================================================================
 # 🏭 BLOCO 2: PRODUÇÃO DO DIA
 # ==============================================================================
-html_prod = f"""
-<div>
-    <label class="master-label" for="chk-prod">
-        <div class="master-metric-box" style="border-left-color: #E5B800;">
-            <span class="chevron">▼</span>
-            <div class="master-metric-title">🏭 Produção de Celulose (Hoje)</div>
-            <div class="master-metric-val">{prod_hoje:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div>
-            <div class="master-metric-sub" style="color: #E5B800;">Previsão de Fechamento: {prev_prod:,.0f} t</div>
-        </div>
-    </label>
-    <input type="checkbox" id="chk-prod" class="toggle-box">
-</div>
-"""
-st.markdown(html_prod, unsafe_allow_html=True)
+st.markdown(f"""
+    <div class="card-topo" style="border-left-color: #E5B800;">
+        <div class="card-title">🏭 Produção de Celulose (Hoje)</div>
+        <div class="card-val">{prod_hoje:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div>
+        <div class="card-sub" style="color: #E5B800;">Previsão de Fechamento: {prev_prod:,.0f} t</div>
+    </div>
+""", unsafe_allow_html=True)
 
-with st.container():
+with st.expander("👇 Ver Máquinas e Qualidade"):
     if qualidade:
         for maq in ["MS1", "MS2"]:
             p_maq = safe_to_numeric(qualidade.get(maq, {}).get("producao", 0))
@@ -330,27 +274,19 @@ with st.container():
 # ==============================================================================
 # 🚚 BLOCO 3: EXPEDIÇÃO DO DIA & GRÁFICO ALTAIR
 # ==============================================================================
-html_exp = f"""
-<div>
-    <label class="master-label" for="chk-exp">
-        <div class="master-metric-box" style="border-left-color: #00D672;">
-            <span class="chevron">▼</span>
-            <div class="master-metric-title">🚛 Expedição Realizada (Hoje)</div>
-            <div class="master-metric-val">{vol_hoje:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div>
-            <div class="master-metric-sub" style="color: #00D672;">Previsão de Fechamento: {prev_carr:,.0f} t</div>
-        </div>
-    </label>
-    <input type="checkbox" id="chk-exp" class="toggle-box">
-</div>
-"""
-st.markdown(html_exp, unsafe_allow_html=True)
+st.markdown(f"""
+    <div class="card-topo" style="border-left-color: #00D672;">
+        <div class="card-title">🚛 Expedição Realizada (Hoje)</div>
+        <div class="card-val">{vol_hoje:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div>
+        <div class="card-sub" style="color: #00D672;">Previsão de Fechamento: {prev_carr:,.0f} t</div>
+    </div>
+""", unsafe_allow_html=True)
 
-with st.container():
+with st.expander("👇 Ver Gráfico por Turno"):
     if dados_turnos and "turnos" in dados_turnos:
         turnos_list = dados_turnos["turnos"]
         ativo_key = dados_turnos.get("ativo_key")
 
-        # Layout HTML dos 3 turnos
         html_t_cards = '<div style="display:flex; gap:6px; margin-bottom:12px;">'
         for t in turnos_list:
             is_atv = (t["key"] == ativo_key)
@@ -361,7 +297,6 @@ with st.container():
         html_t_cards += '</div>'
         st.markdown(html_t_cards, unsafe_allow_html=True)
 
-        # Gráfico Altair nativo e brilhante
         df_vol = pd.DataFrame([{"Turno": t['letra'], "Toneladas": t["vol"], "Cor": "#FF9F1C" if t["key"] == ativo_key else "#3498DB"} for t in turnos_list])
         if not df_vol.empty:
             max_vol = max(df_vol["Toneladas"]) if max(df_vol["Toneladas"]) > 0 else 100
@@ -374,22 +309,15 @@ with st.container():
 # ==============================================================================
 # 📦 BLOCO 4: ESTOQUE TOTAL
 # ==============================================================================
-html_est = f"""
-<div>
-    <label class="master-label" for="chk-est">
-        <div class="master-metric-box" style="border-left-color: #9b59b6;">
-            <span class="chevron">▼</span>
-            <div class="master-metric-title">📦 Estoque Físico no Armazém</div>
-            <div class="master-metric-val">{estoque_total:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div>
-            <div class="master-metric-sub" style="color: #9b59b6;">Detalhado por Material</div>
-        </div>
-    </label>
-    <input type="checkbox" id="chk-est" class="toggle-box">
-</div>
-"""
-st.markdown(html_est, unsafe_allow_html=True)
+st.markdown(f"""
+    <div class="card-topo" style="border-left-color: #9b59b6;">
+        <div class="card-title">📦 Estoque Físico no Armazém</div>
+        <div class="card-val">{estoque_total:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div>
+        <div class="card-sub" style="color: #9b59b6;">Distribuição por Material</div>
+    </div>
+""", unsafe_allow_html=True)
 
-with st.container():
+with st.expander("👇 Ver Gráfico por Material"):
     if dados_segregados:
         df_seg = pd.DataFrame(list(dados_segregados.items()), columns=["Material", "Toneladas"]).sort_values(by="Toneladas", ascending=False)
         if not df_seg.empty:
@@ -400,7 +328,7 @@ with st.container():
         st.caption("Aguardando detalhamento de material...")
 
 # ==============================================================================
-# 🚜 BLOCO 5: FROTA (OS 3 TURNOS DIRETAMENTE DENTRO DO BLOCO)
+# 🚜 BLOCO 5: FROTA (COM CAIXA DE SELEÇÃO)
 # ==============================================================================
 df_frota = carregar_dados_nuvem("Rodizio_Frota")
 equip_em_uso_agora = 0
@@ -417,47 +345,35 @@ if not df_frota.empty:
     op3 = df_f_agora[(df_f_agora["POSTO"].astype(str).str.contains("TALHA", case=False) | df_f_agora["EQUIPAMENTO"].astype(str).str.contains("TALHA", case=False)) & (df_f_agora["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]
     equip_em_uso_agora = len(op1) + len(op2) + len(op3)
 
-html_frota = f"""
-<div>
-    <label class="master-label" for="chk-frota">
-        <div class="master-metric-box" style="border-left-color: #E67E22;">
-            <span class="chevron">▼</span>
-            <div class="master-metric-title">🚜 Equipamentos em Operação</div>
-            <div class="master-metric-val">{equip_em_uso_agora} <span style="font-size:1.1rem; color:#94a3b8;">Neste Exato Momento</span></div>
-            <div class="master-metric-sub" style="color: #E67E22;">Contempla Empilhadeiras e Talhas</div>
-        </div>
-    </label>
-    <input type="checkbox" id="chk-frota" class="toggle-box">
-</div>
-"""
-st.markdown(html_frota, unsafe_allow_html=True)
+st.markdown(f"""
+    <div class="card-topo" style="border-left-color: #E67E22;">
+        <div class="card-title">🚜 Equipamentos em Operação</div>
+        <div class="card-val">{equip_em_uso_agora} <span style="font-size:1.1rem; color:#94a3b8;">Neste Exato Momento</span></div>
+        <div class="card-sub" style="color: #E67E22;">Contempla Empilhadeiras e Talhas</div>
+    </div>
+""", unsafe_allow_html=True)
 
-with st.container():
+with st.expander("👇 Ver Turnos e Janelas da Frota"):
     if not df_frota.empty:
-        html_f_in = ""
-        for t_str in turnos_frota:
-            df_t = df_frota[df_frota[col_t] == t_str]
-            carr = df_t[(df_t["POSTO"].astype(str).str.contains("CARREG", case=False)) & (df_t["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
-            linha = df_t[(df_t["POSTO"].astype(str).str.contains("LINHA", case=False)) & (df_t["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
-            talhas = df_t[(df_t["POSTO"].astype(str).str.contains("TALHA", case=False) | df_t["EQUIPAMENTO"].astype(str).str.contains("TALHA", case=False)) & (df_t["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
-            paradas = df_t[df_t["STATUS_RODIZIO"].astype(str).str.contains("STAND", case=False)]["EQUIPAMENTO"].tolist()
+        turno_sel = st.selectbox("Selecione o Horário / Janela:", turnos_frota, index=idx_sug)
+        df_t = df_frota[df_frota[col_t] == turno_sel]
 
-            str_carr = " ".join([f"<span class='tag-box tag-op'>{t}</span>" for t in carr]) if carr else "<span style='color:gray; font-size:0.85rem;'>Nenhum</span>"
-            str_linha = " ".join([f"<span class='tag-box tag-op'>{t}</span>" for t in linha]) if linha else "<span style='color:gray; font-size:0.85rem;'>Nenhum</span>"
-            str_talha = " ".join([f"<span class='tag-box tag-talha'>{t}</span>" for t in talhas]) if talhas else "<span style='color:gray; font-size:0.85rem;'>Nenhuma operando</span>"
-            str_parada = " ".join([f"<span class='tag-box tag-standby'>{t}</span>" for t in paradas]) if paradas else "<span style='color:gray; font-size:0.85rem;'>Nenhum</span>"
+        carr = df_t[(df_t["POSTO"].astype(str).str.contains("CARREG", case=False)) & (df_t["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
+        linha = df_t[(df_t["POSTO"].astype(str).str.contains("LINHA", case=False)) & (df_t["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
+        talhas = df_t[(df_t["POSTO"].astype(str).str.contains("TALHA", case=False) | df_t["EQUIPAMENTO"].astype(str).str.contains("TALHA", case=False)) & (df_t["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
+        paradas = df_t[df_t["STATUS_RODIZIO"].astype(str).str.contains("STAND", case=False)]["EQUIPAMENTO"].tolist()
 
-            html_f_in += f'<div class="shift-header">🕒 Janela / Turno: {t_str}</div>'
-            html_f_in += f'<div style="margin-bottom:4px; font-size:0.85rem; color:#fff; font-weight:800;">🟢 Empilhadeiras - Carregamento:</div><div style="margin-bottom:12px;">{str_carr}</div>'
-            html_f_in += f'<div style="margin-bottom:4px; font-size:0.85rem; color:#fff; font-weight:800;">🟢 Empilhadeiras - Linha:</div><div style="margin-bottom:12px;">{str_linha}</div>'
-            html_f_in += f'<div style="margin-bottom:4px; font-size:0.85rem; color:#fff; font-weight:800;">🏗️ Pontes Rolantes / Talhas:</div><div style="margin-bottom:12px;">{str_talha}</div>'
-            html_f_in += f'<div style="margin-bottom:4px; font-size:0.85rem; color:#fff; font-weight:800;">🔴 Stand-by / Paradas:</div><div style="margin-bottom:12px;">{str_parada}</div>'
-        st.markdown(html_f_in, unsafe_allow_html=True)
-    else:
-        st.caption("Planilha Rodizio_Frota indisponível.")
+        st.markdown("**🟢 Empilhadeiras - Carregamento:**")
+        st.markdown(" ".join([f'<span class="tag-box tag-op">{t}</span>' for t in carr]) if carr else "<span style='color:gray; font-size:0.85rem;'>Nenhum</span>", unsafe_allow_html=True)
+        st.markdown("<br>**🟢 Empilhadeiras - Linha:**", unsafe_allow_html=True)
+        st.markdown(" ".join([f'<span class="tag-box tag-op">{t}</span>' for t in linha]) if linha else "<span style='color:gray; font-size:0.85rem;'>Nenhum</span>", unsafe_allow_html=True)
+        st.markdown("<br>**🏗️ Ponte Rolante / Talhas:**", unsafe_allow_html=True)
+        st.markdown(" ".join([f'<span class="tag-box tag-talha">{t}</span>' for t in talhas]) if talhas else "<span style='color:gray; font-size:0.85rem;'>Nenhuma operando</span>", unsafe_allow_html=True)
+        st.markdown("<br>**🔴 Stand-by / Paradas:**", unsafe_allow_html=True)
+        st.markdown(" ".join([f'<span class="tag-box tag-standby">{t}</span>' for t in paradas]) if paradas else "<span style='color:gray; font-size:0.85rem;'>Nenhum</span>", unsafe_allow_html=True)
 
 # ==============================================================================
-# ⛽ BLOCO 6: CONSUMO GLP MENSAL
+# ⛽ BLOCO 6: CONSUMO GLP MENSAL (COM CAIXA DE SELEÇÃO)
 # ==============================================================================
 df_glp = carregar_dados_nuvem("Abastecimentos_GLP", cabecalho=None)
 total_glp_recente = 0
@@ -467,6 +383,7 @@ if not df_glp.empty and len(df_glp.columns) >= 8:
     df_g = pd.DataFrame()
     df_g["DATA_DT"] = pd.to_datetime(df_glp.iloc[:, 2].astype(str).str.strip(), format="%d/%m/%Y", errors="coerce")
     df_g = df_g.dropna(subset=["DATA_DT"]) 
+    
     if not df_g.empty:
         df_g["MES_ANO"] = df_g["DATA_DT"].dt.strftime("%m/%Y")
         df_g["MAQUINA"] = df_glp.iloc[:, 5].astype(str).str.strip()
@@ -478,24 +395,18 @@ if not df_glp.empty and len(df_glp.columns) >= 8:
             mes_recente = meses_disp[-1]
             total_glp_recente = df_g[df_g["MES_ANO"] == mes_recente]["KG_NUM"].sum()
 
-html_glp = f"""
-<div>
-    <label class="master-label" for="chk-glp">
-        <div class="master-metric-box" style="border-left-color: #fd7e14;">
-            <span class="chevron">▼</span>
-            <div class="master-metric-title">⛽ Consumo de GLP da Frota</div>
-            <div class="master-metric-val">{total_glp_recente:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">KG</span></div>
-            <div class="master-metric-sub" style="color: #fd7e14;">Acumulado do Mês Atual ({mes_recente})</div>
-        </div>
-    </label>
-    <input type="checkbox" id="chk-glp" class="toggle-box">
-</div>
-"""
-st.markdown(html_glp, unsafe_allow_html=True)
+st.markdown(f"""
+    <div class="card-topo" style="border-left-color: #fd7e14;">
+        <div class="card-title">⛽ Consumo de GLP da Frota</div>
+        <div class="card-val">{total_glp_recente:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">KG</span></div>
+        <div class="card-sub" style="color: #fd7e14;">Acumulado do Mês Atual ({mes_recente})</div>
+    </div>
+""", unsafe_allow_html=True)
 
-with st.container():
+with st.expander("👇 Ver Gráfico de Consumo por Máquina"):
     if not df_glp.empty and 'df_g' in locals() and not df_g.empty and meses_disp:
-        df_mes_selecionado = df_g[df_g["MES_ANO"] == mes_recente]
+        mes_sel_glp = st.selectbox("Selecione o Mês Referência:", meses_disp, index=len(meses_disp)-1)
+        df_mes_selecionado = df_g[df_g["MES_ANO"] == mes_sel_glp]
         df_maq = df_mes_selecionado.groupby("MAQUINA")["KG_NUM"].sum().reset_index().sort_values(by="KG_NUM", ascending=False)
         
         if not df_maq.empty:
