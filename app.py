@@ -136,6 +136,10 @@ def descobrir_letras_turnos(data_alvo):
 
 @st.cache_data(ttl=60)
 def buscar_dados_turnos_direto():
+    """
+    O Mobile calcula os turnos por conta própria acessando a planilha pública,
+    sem precisar que o A.L.O.V.E Core envie isso na chave do Cache_Painel!
+    """
     agora_br = datetime.utcnow() - timedelta(hours=3)
     hoje_date = agora_br.date()
     turno_d_ativo = agora_br.weekday() not in (0, 6)
@@ -192,19 +196,13 @@ def buscar_dados_turnos_direto():
 df_cache = carregar_dados_nuvem("Cache_Painel", cabecalho=0)
 cache_dict = {str(row.iloc[0]).strip(): str(row.iloc[1]).strip() for _, row in df_cache.iterrows()} if not df_cache.empty else {}
 
-dados_patio = {}
-qualidade = {}
-dados_turnos = {}
+# Decodificação dos JSONs (Tudo isso o Core JÁ ENVIA hoje)
+dados_patio = json.loads(cache_dict.get("dados_patio", "{}")) if cache_dict.get("dados_patio") else {}
+qualidade = json.loads(cache_dict.get("qualidade", "{}")) if cache_dict.get("qualidade") else {}
+dados_segregados = json.loads(cache_dict.get("dados_segregados", "{}")) if cache_dict.get("dados_segregados") else {}
 
-try: dados_patio = json.loads(cache_dict.get("dados_patio", "{}"))
-except: pass
-try: qualidade = json.loads(cache_dict.get("qualidade", "{}"))
-except: pass
-try: dados_turnos = json.loads(cache_dict.get("dados_turnos", "{}"))
-except: pass
-
-if not dados_turnos or not dados_turnos.get("turnos"):
-    dados_turnos = buscar_dados_turnos_direto()
+# Busca Turnos Autônoma do Celular
+dados_turnos = buscar_dados_turnos_direto()
 
 vol_hoje = safe_to_numeric(cache_dict.get("vol_hoje", 0))
 estoque_total = safe_to_numeric(cache_dict.get("estoque_total", 0))
@@ -394,11 +392,10 @@ with st.expander("🔍 Toque para ver Expedição Separada por Turno"):
         st.caption("Aguardando carregamento da escala de turnos.")
 
 # ==============================================================================
-# SESSÃO 4: ESTOQUE & FROTA
+# 📦 BLOCO 4: ESTOQUE TOTAL & MATERIAIS
 # ==============================================================================
 st.markdown("<hr style='border:0; height:1px; background:#1c2b42; margin:20px 0;'>", unsafe_allow_html=True)
 
-# Estoque Geral
 st.markdown(f"""
     <div style="background-color: #111c2e; border: 1px solid #1c2b42; border-radius: 10px; padding: 12px; text-align: center; margin-bottom: 15px;">
         <span style="font-size: 0.8rem; color: #E5B800; font-weight: 800; text-transform: uppercase;">📦 Estoque Total no Armazém</span>
@@ -406,7 +403,26 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# Alocação de Frota
+with st.expander("🔍 Toque para ver Estoque Detalhado por Material"):
+    if dados_segregados:
+        df_seg = pd.DataFrame(list(dados_segregados.items()), columns=["Material", "Toneladas"])
+        df_seg = df_seg.sort_values(by="Toneladas", ascending=False)
+        
+        bars_seg = alt.Chart(df_seg).mark_bar(cornerRadius=4).encode(
+            x=alt.X("Material:N", sort="-y", axis=alt.Axis(labelAngle=-45, labelColor="#94a3b8", title=None)),
+            y=alt.Y("Toneladas:Q", axis=None),
+            color=alt.value("#38bdf8")
+        )
+        text_seg = bars_seg.mark_text(align='center', baseline='bottom', dy=-3, color='white', fontSize=11, fontWeight='bold').encode(text=alt.Text('Toneladas:Q', format=',.0f'))
+        chart_seg = (bars_seg + text_seg).properties(height=200, background="transparent")
+        st.altair_chart(chart_seg, use_container_width=True)
+    else:
+        st.caption("Aguardando detalhamento de material do SAP.")
+
+# ==============================================================================
+# 🚜 SESSÃO 5: FROTA
+# ==============================================================================
+st.markdown("<hr>", unsafe_allow_html=True)
 st.markdown("<h4 style='color:#3498DB; font-size:1rem;'>🚜 Alocação de Equipamentos</h4>", unsafe_allow_html=True)
 df_frota = carregar_dados_nuvem("Rodizio_Frota")
 
