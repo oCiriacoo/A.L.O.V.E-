@@ -13,7 +13,7 @@ st.set_page_config(
 )
 
 # ==============================================================================
-# 🎨 IDENTIDADE VISUAL (NAVY BLUE - ESPELHO DA TV)
+# 🎨 IDENTIDADE VISUAL (NAVY BLUE - PÁGINA ÚNICA)
 # ==============================================================================
 st.markdown("""
     <style>
@@ -22,6 +22,13 @@ st.markdown("""
             padding-bottom: 2rem;
             padding-left: 0.8rem;
             padding-right: 0.8rem;
+        }
+        /* Divisórias Customizadas */
+        hr {
+            border: 0;
+            height: 1px;
+            background: #1c2b42;
+            margin: 25px 0;
         }
         /* Cards de Métrica Customizados */
         .metric-card {
@@ -155,154 +162,156 @@ if observacoes and observacoes.strip() not in ["", "None"]:
         </div>
     """, unsafe_allow_html=True)
 
-st.write("") 
-
-tab_carretas, tab_prod_exp, tab_frota = st.tabs(["🚚 Pátio", "🏭 Logística", "⛽ Frota"])
-
 # ==============================================================================
-# ABA 1: CARRETAS (GRID)
+# SESSÃO 1: CARRETAS (PÁTIO)
 # ==============================================================================
-with tab_carretas:
-    if dados_patio:
-        blocos = [
-            ("🚙 Programado", "PR", "#94A3B8"),
-            ("📋 Checklist", "00", "#E5B800"),
-            ("🚛 Apoio", "01", "#E67E22"),
-            ("✅ Fila", "FC", "#00D672"),
-            ("📄 Termo", "TR", "#3498DB"),
-        ]
-        
-        # Correção da renderização do HTML (sem espaços indesejados)
-        html_cards = '<div class="patio-grid">'
-        for titulo, chave, cor in blocos:
-            qtd = dados_patio.get(chave, {}).get("veiculos", 0)
-            peso = dados_patio.get(chave, {}).get("peso", 0.0)
-            html_cards += f'<div class="card-patio" style="border-color: {cor};">'
-            html_cards += f'<div class="card-patio-title" style="color: {cor};">{titulo}</div>'
-            html_cards += f'<div class="card-patio-qtd" style="color: #ffffff;">{int(qtd)} <span style="font-size:0.9rem; color:#94a3b8; font-weight:600;">Veíc</span></div>'
-            html_cards += f'<div class="card-patio-ton">{peso:,.0f} t</div>'
-            html_cards += '</div>'
+st.markdown("<hr>", unsafe_allow_html=True)
+st.markdown("<h4 style='color:#3498DB; margin-bottom: 15px;'>🚚 Status do Pátio</h4>", unsafe_allow_html=True)
+
+if dados_patio:
+    blocos = [
+        ("🚙 Programado", "PR", "#94A3B8"),
+        ("📋 Checklist", "00", "#E5B800"),
+        ("🚛 Apoio", "01", "#E67E22"),
+        ("✅ Fila", "FC", "#00D672"),
+        ("📄 Termo", "TR", "#3498DB"),
+    ]
+    
+    html_cards = '<div class="patio-grid">'
+    for titulo, chave, cor in blocos:
+        qtd = dados_patio.get(chave, {}).get("veiculos", 0)
+        peso = dados_patio.get(chave, {}).get("peso", 0.0)
+        html_cards += f'<div class="card-patio" style="border-color: {cor};">'
+        html_cards += f'<div class="card-patio-title" style="color: {cor};">{titulo}</div>'
+        html_cards += f'<div class="card-patio-qtd" style="color: #ffffff;">{int(qtd)} <span style="font-size:0.9rem; color:#94a3b8; font-weight:600;">Veíc</span></div>'
+        html_cards += f'<div class="card-patio-ton">{peso:,.0f} t</div>'
         html_cards += '</div>'
-        st.markdown(html_cards, unsafe_allow_html=True)
-    else:
-        st.info("Dados do pátio indisponíveis na nuvem.")
+    html_cards += '</div>'
+    st.markdown(html_cards, unsafe_allow_html=True)
+else:
+    st.info("Dados do pátio indisponíveis na nuvem.")
 
 # ==============================================================================
-# ABA 2: PRODUÇÃO, EXPEDIÇÃO E QUALIDADE
+# SESSÃO 2: LOGÍSTICA E PRODUÇÃO
 # ==============================================================================
-with tab_prod_exp:
-    # 1. Cards Superiores
-    st.markdown(f"""
-        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-            <div class="metric-card" style="flex: 1; border-bottom: 3px solid #00D672;">
-                <div class="metric-title">🚛 Expedição</div>
-                <div class="metric-value">{vol_hoje:,.0f} <span style="font-size:1rem;">t</span></div>
-                <div class="metric-sub">Prev: {prev_carr:,.0f} t</div>
-            </div>
-            <div class="metric-card" style="flex: 1; border-bottom: 3px solid #3498DB;">
-                <div class="metric-title">🏭 Produção</div>
-                <div class="metric-value">{prod_hoje:,.0f} <span style="font-size:1rem;">t</span></div>
-                <div class="metric-sub">Prev: {prev_prod:,.0f} t</div>
-            </div>
-        </div>
-        <div class="metric-card" style="border-bottom: 3px solid #E5B800;">
-            <div class="metric-title">📦 Estoque Total</div>
-            <div class="metric-value">{estoque_total:,.0f} <span style="font-size:1rem;">t</span></div>
-        </div>
-    """, unsafe_allow_html=True)
+st.markdown("<hr>", unsafe_allow_html=True)
+st.markdown("<h4 style='color:#3498DB; margin-bottom: 15px;'>🏭 Logística & Produção</h4>", unsafe_allow_html=True)
 
-    # -------------------------------------------------------------------------
-    # 🔥 GRÁFICO DE TURNOS ESCALADOS
-    # -------------------------------------------------------------------------
-    if dados_turnos and "turnos" in dados_turnos:
-        st.markdown("<h4 style='color:#3498DB; margin-top:20px; font-size:1rem;'>⏳ Expedição por Turno</h4>", unsafe_allow_html=True)
-        
-        turnos_list = dados_turnos["turnos"]
-        ativo_key = dados_turnos.get("ativo_key")
-        
-        data_grafico = []
-        for t in turnos_list:
-            data_grafico.append({
-                "Turno": f"{t['letra']} ({t['horario'].split('-')[0].strip()})",
-                "Toneladas": t["vol"],
-                "Cor": "#FF9F1C" if t["key"] == ativo_key else "#3498DB"
-            })
-            
-        df_vol = pd.DataFrame(data_grafico)
-        max_vol = max(df_vol["Toneladas"]) if not df_vol.empty and max(df_vol["Toneladas"]) > 0 else 100
-        
-        bars = alt.Chart(df_vol).mark_bar(cornerRadius=6).encode(
-            x=alt.X("Turno:N", sort=None, axis=alt.Axis(labelAngle=0, labelColor="#94a3b8", title=None)),
-            y=alt.Y("Toneladas:Q", scale=alt.Scale(domain=[0, max_vol * 1.3]), axis=None),
-            color=alt.Color("Cor:N", scale=None) 
-        )
-        
-        text = bars.mark_text(align='center', baseline='bottom', dy=-5, color='white', fontSize=14, fontWeight='bold').encode(
-            text=alt.Text('Toneladas:Q', format=',.0f')
-        )
-        
-        chart_vol = (bars + text).properties(height=220, background="transparent")
-        st.altair_chart(chart_vol, use_container_width=True)
-    else:
-        st.info("Aguardando o A.L.O.V.E Core calcular e enviar a escala de turnos.")
+# 1. Cards Superiores
+st.markdown(f"""
+    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+        <div class="metric-card" style="flex: 1; border-bottom: 3px solid #00D672;">
+            <div class="metric-title">🚛 Expedição</div>
+            <div class="metric-value">{vol_hoje:,.0f} <span style="font-size:1rem;">t</span></div>
+            <div class="metric-sub">Prev: {prev_carr:,.0f} t</div>
+        </div>
+        <div class="metric-card" style="flex: 1; border-bottom: 3px solid #3498DB;">
+            <div class="metric-title">🏭 Produção</div>
+            <div class="metric-value">{prod_hoje:,.0f} <span style="font-size:1rem;">t</span></div>
+            <div class="metric-sub">Prev: {prev_prod:,.0f} t</div>
+        </div>
+    </div>
+    <div class="metric-card" style="border-bottom: 3px solid #E5B800;">
+        <div class="metric-title">📦 Estoque Total</div>
+        <div class="metric-value">{estoque_total:,.0f} <span style="font-size:1rem;">t</span></div>
+    </div>
+""", unsafe_allow_html=True)
 
-    # -------------------------------------------------------------------------
-    # 3. Qualidade
-    # -------------------------------------------------------------------------
-    st.markdown("<h4 style='color:#3498DB; margin-top:10px; font-size:1rem;'>⚙️ Qualidade MS1 & MS2</h4>", unsafe_allow_html=True)
-    if qualidade:
-        for maq in ["MS1", "MS2"]:
-            q_suj = qualidade.get(maq, {}).get('sujidade', 0.0)
-            q_visc = qualidade.get(maq, {}).get('viscosidade', 0.0)
-            q_teor = qualidade.get(maq, {}).get('teor', 0.0)
-            
-            st.markdown(f"""
-                <div style="background-color: #111c2e; border: 1px solid #1c2b42; border-radius: 8px; padding: 10px; margin-bottom: 10px;">
-                    <div style="color:#3498DB; font-weight:800; margin-bottom: 8px;">{maq} <span style="color:#FF9F1C; font-size:0.85rem; float:right;">MAT: {qualidade.get(maq, {}).get('material', '--')}</span></div>
-                    <div style="display: flex; justify-content: space-between; text-align: center;">
-                        <div>
-                            <div style="font-size:0.75rem; color:#94a3b8;">Sujidade</div>
-                            <div style="font-size:1.1rem; font-weight:bold; color:#00D672;">{q_suj:.2f}</div>
-                        </div>
-                        <div>
-                            <div style="font-size:0.75rem; color:#94a3b8;">Viscosidade</div>
-                            <div style="font-size:1.1rem; font-weight:bold; color:#00D672;">{q_visc:,.0f}</div>
-                        </div>
-                        <div>
-                            <div style="font-size:0.75rem; color:#94a3b8;">Teor Seco</div>
-                            <div style="font-size:1.1rem; font-weight:bold; color:#00D672;">{q_teor:.2f}%</div>
-                        </div>
+# -------------------------------------------------------------------------
+# 🔥 GRÁFICO DE TURNOS ESCALADOS
+# -------------------------------------------------------------------------
+if dados_turnos and "turnos" in dados_turnos:
+    st.markdown("<h5 style='color:#ffffff; margin-top:20px; margin-bottom:10px;'>⏳ Expedição por Turno</h5>", unsafe_allow_html=True)
+    
+    turnos_list = dados_turnos["turnos"]
+    ativo_key = dados_turnos.get("ativo_key")
+    
+    data_grafico = []
+    for t in turnos_list:
+        data_grafico.append({
+            "Turno": f"{t['letra']} ({t['horario'].split('-')[0].strip()})",
+            "Toneladas": t["vol"],
+            "Cor": "#FF9F1C" if t["key"] == ativo_key else "#3498DB"
+        })
+        
+    df_vol = pd.DataFrame(data_grafico)
+    max_vol = max(df_vol["Toneladas"]) if not df_vol.empty and max(df_vol["Toneladas"]) > 0 else 100
+    
+    bars = alt.Chart(df_vol).mark_bar(cornerRadius=6).encode(
+        x=alt.X("Turno:N", sort=None, axis=alt.Axis(labelAngle=0, labelColor="#94a3b8", title=None)),
+        y=alt.Y("Toneladas:Q", scale=alt.Scale(domain=[0, max_vol * 1.3]), axis=None),
+        color=alt.Color("Cor:N", scale=None) 
+    )
+    
+    text = bars.mark_text(align='center', baseline='bottom', dy=-5, color='white', fontSize=14, fontWeight='bold').encode(
+        text=alt.Text('Toneladas:Q', format=',.0f')
+    )
+    
+    chart_vol = (bars + text).properties(height=220, background="transparent")
+    st.altair_chart(chart_vol, use_container_width=True)
+else:
+    st.info("Aguardando o A.L.O.V.E Core calcular e enviar a escala de turnos.")
+
+# -------------------------------------------------------------------------
+# 3. Qualidade
+# -------------------------------------------------------------------------
+st.markdown("<h5 style='color:#ffffff; margin-top:20px; margin-bottom:10px;'>⚙️ Qualidade MS1 & MS2</h5>", unsafe_allow_html=True)
+if qualidade:
+    for maq in ["MS1", "MS2"]:
+        q_suj = qualidade.get(maq, {}).get('sujidade', 0.0)
+        q_visc = qualidade.get(maq, {}).get('viscosidade', 0.0)
+        q_teor = qualidade.get(maq, {}).get('teor', 0.0)
+        
+        st.markdown(f"""
+            <div style="background-color: #111c2e; border: 1px solid #1c2b42; border-radius: 8px; padding: 10px; margin-bottom: 10px;">
+                <div style="color:#3498DB; font-weight:800; margin-bottom: 8px;">{maq} <span style="color:#FF9F1C; font-size:0.85rem; float:right;">MAT: {qualidade.get(maq, {}).get('material', '--')}</span></div>
+                <div style="display: flex; justify-content: space-between; text-align: center;">
+                    <div>
+                        <div style="font-size:0.75rem; color:#94a3b8;">Sujidade</div>
+                        <div style="font-size:1.1rem; font-weight:bold; color:#00D672;">{q_suj:.2f}</div>
+                    </div>
+                    <div>
+                        <div style="font-size:0.75rem; color:#94a3b8;">Viscosidade</div>
+                        <div style="font-size:1.1rem; font-weight:bold; color:#00D672;">{q_visc:,.0f}</div>
+                    </div>
+                    <div>
+                        <div style="font-size:0.75rem; color:#94a3b8;">Teor Seco</div>
+                        <div style="font-size:1.1rem; font-weight:bold; color:#00D672;">{q_teor:.2f}%</div>
                     </div>
                 </div>
-            """, unsafe_allow_html=True)
+            </div>
+        """, unsafe_allow_html=True)
 
 # ==============================================================================
-# ABA 3: FROTA E GLP
+# SESSÃO 3: FROTA E GLP
 # ==============================================================================
-with tab_frota:
-    st.markdown("<h4 style='color:#3498DB; font-size:1rem;'>🚜 Alocação de Equipamentos</h4>", unsafe_allow_html=True)
-    df_frota = carregar_dados("Rodizio_Frota")
+st.markdown("<hr>", unsafe_allow_html=True)
+st.markdown("<h4 style='color:#3498DB; margin-bottom: 15px;'>🚜 Alocação de Equipamentos</h4>", unsafe_allow_html=True)
 
-    if not df_frota.empty:
-        col_turno = "TURNO_JANELA" if "TURNO_JANELA" in df_frota.columns else df_frota.columns[0]
-        turnos = df_frota[col_turno].dropna().unique().tolist()
-        hora_atual = datetime.now().hour
-        idx_sug = next((i for i, t in enumerate(turnos) if ("00:00" in str(t) and 0 <= hora_atual < 8) or ("08:00" in str(t) and 8 <= hora_atual < 16) or ("16:00" in str(t) and 16 <= hora_atual <= 23)), 0)
-        
-        turno_sel = st.selectbox("Selecione o Turno:", turnos, index=idx_sug)
-        df_f = df_frota[df_frota[col_turno] == turno_sel]
+df_frota = carregar_dados("Rodizio_Frota")
 
-        carr_op = df_f[(df_f["POSTO"].astype(str).str.contains("CARREG", case=False)) & (df_f["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
-        linha_op = df_f[(df_f["POSTO"].astype(str).str.contains("LINHA", case=False)) & (df_f["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
-        paradas = df_f[df_f["STATUS_RODIZIO"].astype(str).str.contains("STAND", case=False)]["EQUIPAMENTO"].tolist()
+if not df_frota.empty:
+    col_turno = "TURNO_JANELA" if "TURNO_JANELA" in df_frota.columns else df_frota.columns[0]
+    turnos = df_frota[col_turno].dropna().unique().tolist()
+    hora_atual = datetime.now().hour
+    idx_sug = next((i for i, t in enumerate(turnos) if ("00:00" in str(t) and 0 <= hora_atual < 8) or ("08:00" in str(t) and 8 <= hora_atual < 16) or ("16:00" in str(t) and 16 <= hora_atual <= 23)), 0)
+    
+    turno_sel = st.selectbox("Selecione o Turno:", turnos, index=idx_sug)
+    df_f = df_frota[df_frota[col_turno] == turno_sel]
 
-        st.markdown("**🟢 Carregamento:**")
-        st.markdown(" ".join([f'<span class="tag-box tag-op">{t}</span>' for t in carr_op]) if carr_op else "<span style='color:gray; font-size:0.85rem;'>Nenhum</span>", unsafe_allow_html=True)
+    carr_op = df_f[(df_f["POSTO"].astype(str).str.contains("CARREG", case=False)) & (df_f["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
+    linha_op = df_f[(df_f["POSTO"].astype(str).str.contains("LINHA", case=False)) & (df_f["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
+    paradas = df_f[df_f["STATUS_RODIZIO"].astype(str).str.contains("STAND", case=False)]["EQUIPAMENTO"].tolist()
 
-        st.markdown("<br>**🟢 Abastecimento de Linha:**", unsafe_allow_html=True)
-        st.markdown(" ".join([f'<span class="tag-box tag-op">{t}</span>' for t in linha_op]) if linha_op else "<span style='color:gray; font-size:0.85rem;'>Nenhum</span>", unsafe_allow_html=True)
+    st.markdown("**🟢 Carregamento:**")
+    st.markdown(" ".join([f'<span class="tag-box tag-op">{t}</span>' for t in carr_op]) if carr_op else "<span style='color:gray; font-size:0.85rem;'>Nenhum</span>", unsafe_allow_html=True)
 
-        st.markdown("<br>**🔴 Stand-by / Paradas:**", unsafe_allow_html=True)
-        st.markdown(" ".join([f'<span class="tag-box tag-standby">{t}</span>' for t in paradas]) if paradas else "<span style='color:gray; font-size:0.85rem;'>Nenhum</span>", unsafe_allow_html=True)
-    else:
-        st.info("Planilha Rodizio_Frota indisponível.")
+    st.markdown("<br>**🟢 Abastecimento de Linha:**", unsafe_allow_html=True)
+    st.markdown(" ".join([f'<span class="tag-box tag-op">{t}</span>' for t in linha_op]) if linha_op else "<span style='color:gray; font-size:0.85rem;'>Nenhum</span>", unsafe_allow_html=True)
+
+    st.markdown("<br>**🔴 Stand-by / Paradas:**", unsafe_allow_html=True)
+    st.markdown(" ".join([f'<span class="tag-box tag-standby">{t}</span>' for t in paradas]) if paradas else "<span style='color:gray; font-size:0.85rem;'>Nenhum</span>", unsafe_allow_html=True)
+else:
+    st.info("Planilha Rodizio_Frota indisponível.")
+
+st.markdown("<br><center><span style='color:#94a3b8; font-size: 0.8rem;'>Logística MI | A.L.O.V.E Core Dashboard</span></center>", unsafe_allow_html=True)
