@@ -15,7 +15,7 @@ st.set_page_config(
 )
 
 # ==============================================================================
-# 🎨 CSS AVANÇADO (CARDS CLICÁVEIS + GRÁFICOS + TABS CSS NATIVAS)
+# 🎨 CSS AVANÇADO (CARDS CLICÁVEIS + GRÁFICOS DE COLUNA CSS)
 # ==============================================================================
 st.markdown("""
     <style>
@@ -26,10 +26,9 @@ st.markdown("""
             padding-right: 0.8rem;
         }
         
-        /* Oculta os checkboxes que farão a mágica do clique */
         input[type="radio"] { display: none; }
         
-        /* Mágica do Bloco Clicável (HTML details/summary nativo super polido) */
+        /* Mágica do Bloco Clicável (HTML details/summary) */
         details.master-box {
             background-color: #111c2e;
             border-radius: 12px;
@@ -51,7 +50,6 @@ st.markdown("""
         }
         details.master-box summary::-webkit-details-marker { display: none; }
         
-        /* Setinha customizada giratória */
         details.master-box summary::after {
             content: '▼';
             position: absolute; right: 20px; top: 50%; transform: translateY(-50%);
@@ -64,31 +62,23 @@ st.markdown("""
         .master-metric-sub { font-size: 0.85rem; font-weight: 700; }
         .master-content { background-color: #0a101d; padding: 16px; border-top: 1px dashed #1c2b42; }
 
-        /* Pátio Grid */
         .patio-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
         .card-patio-sub { background-color: #111c2e; border-radius: 8px; padding: 10px; border-left: 4px solid; border: 1px solid #1c2b42;}
         .card-patio-title { font-weight: 800; font-size: 0.95rem; margin-bottom: 4px; }
         .card-patio-qtd { font-size: 1.4rem; font-weight: 900; color: #ffffff; }
         .card-patio-ton { font-size: 0.85rem; color: #94a3b8; font-weight: 600; }
 
-        /* Gráfico de Barras CSS (Grosso e Lindo) */
-        .bar-chart-row { margin-bottom: 14px; }
-        .bar-chart-labels { display: flex; justify-content: space-between; font-size: 0.9rem; font-weight: 700; color: #fff; margin-bottom: 6px; }
-        .bar-chart-bg { background-color: #1c2b42; border-radius: 4px; height: 22px; width: 100%; overflow: hidden; }
-        .bar-chart-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease-in-out; }
-
-        /* Tags Frota */
         .tag-box { display: inline-block; padding: 6px 12px; margin: 3px; border-radius: 6px; font-weight: 800; font-size: 0.8rem; text-align: center; }
         .tag-op { background-color: #00D672; color: #0a101d; }
         .tag-standby { background-color: #E74C3C; color: #ffffff; }
         .tag-talha { background-color: #F39C12; color: #0a101d; }
 
-        /* 💡 TABS CSS MÁGICAS (Substitui o Selectbox) */
-        .css-tabs label { display: inline-block; padding: 8px 12px; background-color: #1c2b42; color: #94a3b8; border-radius: 6px; font-size: 0.8rem; font-weight: 800; margin-bottom: 12px; margin-right: 6px; cursor: pointer; transition: 0.2s; }
+        /* TABS CSS (Centralizadas) */
+        .css-tabs label { display: inline-block; padding: 8px 12px; background-color: #1c2b42; color: #94a3b8; border-radius: 6px; font-size: 0.8rem; font-weight: 800; margin: 4px; cursor: pointer; transition: 0.2s; }
         .css-tabs input[type="radio"]:checked + label { background-color: #3498DB; color: #fff; }
-        .tab-content { display: none; animation: fadeIn 0.3s ease; }
+        .tab-content { display: none; animation: fadeIn 0.3s ease; text-align: center; }
         #ftab0:checked ~ #fcontent0, #ftab1:checked ~ #fcontent1, #ftab2:checked ~ #fcontent2 { display: block; }
-
+        
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 """, unsafe_allow_html=True)
@@ -167,7 +157,24 @@ def buscar_dados_turnos_direto():
     except Exception: return None
 
 # ==============================================================================
-# 🔥 RESGATE DOS DADOS DA NUVEM E CÁLCULOS
+# 🔥 FUNÇÃO MÁGICA: GRÁFICO DE COLUNAS VERTICAIS EM HTML PURO (ANTI-BUG)
+# ==============================================================================
+def build_vertical_chart(data, height=160):
+    if not data: return ""
+    max_v = max([d["value"] for d in data]) if max([d["value"] for d in data]) > 0 else 100
+    html = f"<div style='display:flex; justify-content:space-evenly; align-items:flex-end; height:{height}px; border-bottom:1px solid #1c2b42; padding-bottom:0px; margin-top:15px;'>"
+    lbl_html = "<div style='display:flex; justify-content:space-evenly; margin-top:8px;'>"
+    for d in data:
+        h_pct = min(100, (d["value"] / max_v) * 100)
+        color = d.get("color", "#38bdf8")
+        html += f"<div style='display:flex; flex-direction:column; align-items:center; height:100%; width:100%; justify-content:flex-end;'><span style='font-size:0.85rem; font-weight:800; color:{color}; margin-bottom:6px;'>{d['text']}</span><div style='width:38px; height:{h_pct}%; background-color:{color}; border-radius:4px 4px 0 0;'></div></div>"
+        lbl_html += f"<div style='width:100%; text-align:center; font-size:0.75rem; color:#94a3b8; font-weight:800;'>{d['label']}</div>"
+    html += "</div>"
+    lbl_html += "</div>"
+    return html + lbl_html
+
+# ==============================================================================
+# 🔥 RESGATE DOS DADOS DA NUVEM & CÁLCULOS
 # ==============================================================================
 df_cache = carregar_dados_nuvem("Cache_Painel", cabecalho=0)
 cache_dict = {str(row.iloc[0]).strip(): str(row.iloc[1]).strip() for _, row in df_cache.iterrows()} if not df_cache.empty else {}
@@ -193,7 +200,6 @@ prev_prod = (prod_hoje / horas_passadas_prod) * 24
 horas_produtivas = sum((1.0 if h > agora.hour else (1.0 - (agora.minute / 60.0))) * (0.0 if 0 <= h < 8 and agora.weekday() in (0, 6) else (6.25 / 8.0)) for h in range(agora.hour, 24))
 cap_maxima_restante = horas_produtivas * 500.0
 
-# Regras do Pátio: PR fica de fora do total FÍSICO e do DISPONÍVEL
 total_veiculos_fisicos = sum(dados_patio.get(k, {}).get("veiculos", 0) for k in ["00", "01", "FC", "TR"]) if dados_patio else 0
 vol_patio_disponivel = sum(dados_patio.get(k, {}).get("peso", 0.0) for k in ["00", "01", "FC"]) if dados_patio else 0.0
 prev_carr = vol_hoje + min(cap_maxima_restante, vol_patio_disponivel)
@@ -218,7 +224,7 @@ if observacoes and observacoes.strip() not in ["", "None"]:
 st.write("")
 
 # ==============================================================================
-# 📦 BLOCO 1: PÁTIO DE VEÍCULOS (HTML ACHATADO PARA NÃO BUGAR)
+# 📦 BLOCO 1: PÁTIO DE VEÍCULOS
 # ==============================================================================
 html_patio = '<details class="master-box" style="border-left-color: #38bdf8;">'
 html_patio += f'<summary><div class="master-metric-title">🚛 Pátio da Fábrica (Tempo Real)</div><div class="master-metric-val">{total_veiculos_fisicos} <span style="font-size:1.1rem; color:#94a3b8;">Veículos Físicos</span></div><div class="master-metric-sub" style="color: #38bdf8;">Carga Disponível p/ Carregar: {vol_patio_disponivel:,.0f} t</div></summary>'
@@ -237,7 +243,7 @@ html_patio += "</div></details>"
 st.markdown(html_patio, unsafe_allow_html=True)
 
 # ==============================================================================
-# 🏭 BLOCO 2: PRODUÇÃO DO DIA (HTML ACHATADO PARA NÃO BUGAR)
+# 🏭 BLOCO 2: PRODUÇÃO DO DIA
 # ==============================================================================
 html_prod = '<details class="master-box" style="border-left-color: #E5B800;">'
 html_prod += f'<summary><div class="master-metric-title">🏭 Produção de Celulose (Hoje)</div><div class="master-metric-val">{prod_hoje:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div><div class="master-metric-sub" style="color: #E5B800;">Previsão de Fechamento: {prev_prod:,.0f} t</div></summary>'
@@ -262,7 +268,7 @@ html_prod += "</div></details>"
 st.markdown(html_prod, unsafe_allow_html=True)
 
 # ==============================================================================
-# 🚚 BLOCO 3: EXPEDIÇÃO DO DIA & TURNOS (HTML ACHATADO PARA NÃO BUGAR)
+# 🚚 BLOCO 3: EXPEDIÇÃO DO DIA & TURNOS (GRÁFICO COLUNAS VERTICAIS)
 # ==============================================================================
 html_exp = '<details class="master-box" style="border-left-color: #00D672;">'
 html_exp += f'<summary><div class="master-metric-title">🚛 Expedição Realizada (Hoje)</div><div class="master-metric-val">{vol_hoje:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div><div class="master-metric-sub" style="color: #00D672;">Previsão de Fechamento: {prev_carr:,.0f} t</div></summary>'
@@ -272,22 +278,24 @@ if dados_turnos and "turnos" in dados_turnos:
     turnos_list = dados_turnos["turnos"]
     ativo_key = dados_turnos.get("ativo_key")
 
-    html_exp += '<div style="display:flex; gap:6px; margin-bottom:16px;">'
+    html_exp += '<div style="display:flex; gap:6px; margin-bottom:8px;">'
+    chart_data_exp = []
     for t in turnos_list:
         is_atv = (t["key"] == ativo_key)
         cor_b = "#FF9F1C" if is_atv else "#1c2b42"
         cor_txt = "#FF9F1C" if is_atv else "#ffffff"
         sub_txt = f"{t['horario']} (ATIVO)" if is_atv else t['horario']
+        
         html_exp += f"<div style='flex:1; background-color:#111c2e; border:1.5px solid {cor_b}; border-radius:8px; padding:8px; text-align:center;'><div style='font-size:0.75rem; font-weight:800; color:{cor_txt};'>{t['letra']}</div><div style='font-size:1.1rem; font-weight:900; color:#ffffff;'>{t['vol']:,.0f} t</div><div style='font-size:0.65rem; color:#94a3b8;'>{sub_txt}</div></div>"
+        
+        chart_data_exp.append({
+            "label": t['letra'],
+            "value": t['vol'],
+            "text": f"{t['vol']:,.0f} t",
+            "color": "#FF9F1C" if is_atv else "#3498DB"
+        })
     html_exp += '</div>'
-
-    html_exp += '<div style="margin-top: 10px;">'
-    max_vol = max([t["vol"] for t in turnos_list] + [100])
-    for t in turnos_list:
-        w_pct = min(100, (t["vol"] / max_vol) * 100)
-        c_barra = "#FF9F1C" if t["key"] == ativo_key else "#3498DB"
-        html_exp += f"<div class='bar-chart-row'><div class='bar-chart-labels'><span>{t['letra']}</span><span style='color:{c_barra};'>{t['vol']:,.0f} t</span></div><div class='bar-chart-bg'><div class='bar-chart-fill' style='width: {w_pct}%; background-color: {c_barra};'></div></div></div>"
-    html_exp += '</div>'
+    html_exp += build_vertical_chart(chart_data_exp)
 else:
     html_exp += '<div style="color:gray;">Aguardando escala de turnos...</div>'
 
@@ -295,7 +303,7 @@ html_exp += "</div></details>"
 st.markdown(html_exp, unsafe_allow_html=True)
 
 # ==============================================================================
-# 📦 BLOCO 4: ESTOQUE TOTAL E MATERIAIS (HTML ACHATADO PARA NÃO BUGAR)
+# 📦 BLOCO 4: ESTOQUE TOTAL E MATERIAIS (GRÁFICO COLUNAS VERTICAIS)
 # ==============================================================================
 html_est = '<details class="master-box" style="border-left-color: #9b59b6;">'
 html_est += f'<summary><div class="master-metric-title">📦 Estoque Físico no Armazém</div><div class="master-metric-val">{estoque_total:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div><div class="master-metric-sub" style="color: #9b59b6;">Distribuição por Material</div></summary>'
@@ -303,10 +311,15 @@ html_est += '<div class="master-content">'
 
 if dados_segregados:
     df_seg = pd.DataFrame(list(dados_segregados.items()), columns=["Material", "Toneladas"]).sort_values(by="Toneladas", ascending=False)
-    max_mat_vol = df_seg["Toneladas"].max() if not df_seg.empty else 100
+    chart_data_est = []
     for _, row in df_seg.iterrows():
-        w_pct = min(100, (row["Toneladas"] / max_mat_vol) * 100)
-        html_est += f"<div class='bar-chart-row'><div class='bar-chart-labels'><span style='color:#94a3b8;'>{row['Material']}</span><span style='color:#38bdf8;'>{row['Toneladas']:,.0f} t</span></div><div class='bar-chart-bg'><div class='bar-chart-fill' style='width: {w_pct}%; background-color: #38bdf8;'></div></div></div>"
+        chart_data_est.append({
+            "label": row["Material"],
+            "value": row["Toneladas"],
+            "text": f"{row['Toneladas']:,.0f} t",
+            "color": "#38bdf8"
+        })
+    html_est += build_vertical_chart(chart_data_est)
 else:
     html_est += '<div style="color:gray;">Aguardando detalhamento de material...</div>'
 
@@ -314,7 +327,7 @@ html_est += "</div></details>"
 st.markdown(html_est, unsafe_allow_html=True)
 
 # ==============================================================================
-# 🚜 BLOCO 5: FROTA (TABS NATIVAS EM CSS COM TEXTO CENTRALIZADO)
+# 🚜 BLOCO 5: FROTA (TABS NATIVAS CENTRALIZADAS EM CSS)
 # ==============================================================================
 df_frota = carregar_dados_nuvem("Rodizio_Frota")
 equip_em_uso_agora = 0
@@ -335,15 +348,15 @@ if not df_frota.empty:
     equip_em_uso_agora = len(op1) + len(op2) + len(op3)
 
     html_frota += f'<summary><div class="master-metric-title">🚜 Equipamentos em Operação</div><div class="master-metric-val">{equip_em_uso_agora} <span style="font-size:1.1rem; color:#94a3b8;">Neste Exato Momento</span></div><div class="master-metric-sub" style="color: #E67E22;">Contempla Empilhadeiras e Talhas</div></summary>'
-    html_frota += '<div class="master-content css-tabs" style="text-align: center;">'
-    html_frota += '<div style="color: #94a3b8; font-size: 0.85rem; font-weight: bold; margin-bottom: 12px;">Selecione o Turno / Janela:</div>'
+    html_frota += '<div class="master-content css-tabs">'
     
-    # Gera os Botões das Janelas
+    html_frota += '<div style="text-align: center; margin-bottom: 12px;">'
+    html_frota += '<div style="color: #94a3b8; font-size: 0.85rem; font-weight: bold; margin-bottom: 8px;">Selecione o Turno / Janela:</div>'
     for i, t_str in enumerate(turnos_frota):
         checked = "checked" if i == idx_sug else ""
         html_frota += f'<input type="radio" name="ftabs" id="ftab{i}" {checked}><label for="ftab{i}">{t_str}</label>'
+    html_frota += '</div>'
     
-    # Gera o Conteúdo (Equipamentos) centralizado
     for i, t_str in enumerate(turnos_frota):
         df_t = df_frota[df_frota[col_t] == t_str]
         carr = df_t[(df_t["POSTO"].astype(str).str.contains("CARREG", case=False)) & (df_t["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
@@ -351,27 +364,26 @@ if not df_frota.empty:
         talhas = df_t[(df_t["POSTO"].astype(str).str.contains("TALHA", case=False) | df_t["EQUIPAMENTO"].astype(str).str.contains("TALHA", case=False)) & (df_t["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
         paradas = df_t[df_t["STATUS_RODIZIO"].astype(str).str.contains("STAND", case=False)]["EQUIPAMENTO"].tolist()
 
-        str_carr = " ".join([f"<span class='tag-box tag-op'>{t}</span>" for t in carr]) if carr else "<span style='color:gray; font-size:0.8rem;'>Nenhum equipamento</span>"
-        str_linha = " ".join([f"<span class='tag-box tag-op'>{t}</span>" for t in linha]) if linha else "<span style='color:gray; font-size:0.8rem;'>Nenhum equipamento</span>"
-        str_talha = " ".join([f"<span class='tag-box tag-talha'>{t}</span>" for t in talhas]) if talhas else "<span style='color:gray; font-size:0.8rem;'>Nenhuma operando</span>"
-        str_parada = " ".join([f"<span class='tag-box tag-standby'>{t}</span>" for t in paradas]) if paradas else "<span style='color:gray; font-size:0.8rem;'>Nenhum equipamento</span>"
+        str_carr = " ".join([f"<span class='tag-box tag-op'>{t}</span>" for t in carr]) if carr else "<span style='color:gray; font-size:0.8rem;'>Nenhum</span>"
+        str_linha = " ".join([f"<span class='tag-box tag-op'>{t}</span>" for t in linha]) if linha else "<span style='color:gray; font-size:0.8rem;'>Nenhum</span>"
+        str_talha = " ".join([f"<span class='tag-box tag-talha'>{t}</span>" for t in talhas]) if talhas else "<span style='color:gray; font-size:0.8rem;'>Nenhuma</span>"
+        str_parada = " ".join([f"<span class='tag-box tag-standby'>{t}</span>" for t in paradas]) if paradas else "<span style='color:gray; font-size:0.8rem;'>Nenhum</span>"
 
         html_frota += f'<div class="tab-content" id="fcontent{i}">'
-        html_frota += f'<div class="shift-header">🕒 Equipamentos da Janela: {t_str}</div>'
         html_frota += f'<div style="margin-bottom:6px; font-size:0.85rem; color:#fff; font-weight:800; margin-top:8px;">🟢 Empilhadeiras - Carregamento:</div><div style="margin-bottom:14px;">{str_carr}</div>'
         html_frota += f'<div style="margin-bottom:6px; font-size:0.85rem; color:#fff; font-weight:800;">🟢 Empilhadeiras - Linha:</div><div style="margin-bottom:14px;">{str_linha}</div>'
         html_frota += f'<div style="margin-bottom:6px; font-size:0.85rem; color:#fff; font-weight:800;">🏗️ Pontes Rolantes / Talhas:</div><div style="margin-bottom:14px;">{str_talha}</div>'
-        html_frota += f'<div style="margin-bottom:6px; font-size:0.85rem; color:#fff; font-weight:800;">🔴 Stand-by / Paradas:</div><div style="margin-bottom:4px;">{str_parada}</div>'
+        html_frota += f'<div style="margin-bottom:6px; font-size:0.85rem; color:#fff; font-weight:800;">🔴 Stand-by / Paradas:</div><div style="margin-bottom:12px;">{str_parada}</div>'
         html_frota += '</div>'
     html_frota += '</div>'
 else:
-    html_frota += '<summary><div class="master-metric-title">🚜 Equipamentos</div></summary><div class="master-content"><div style="color:gray;">Planilha Rodizio_Frota indisponível.</div></div>'
+    html_frota += '<summary><div class="master-metric-title">🚜 Equipamentos</div></summary><div class="master-content"><div style="color:gray;">Planilha indisponível.</div></div>'
 
 html_frota += '</details>'
 st.markdown(html_frota, unsafe_allow_html=True)
 
 # ==============================================================================
-# ⛽ BLOCO 6: CONSUMO GLP MENSAL (APENAS MÊS ATUAL COMO SOLICITADO)
+# ⛽ BLOCO 6: CONSUMO GLP MENSAL (GRÁFICO COLUNAS VERTICAIS)
 # ==============================================================================
 df_glp = carregar_dados_nuvem("Abastecimentos_GLP", cabecalho=None)
 total_glp_recente = 0
@@ -392,7 +404,7 @@ if not df_glp.empty and len(df_glp.columns) >= 8:
         meses_disp = df_g["MES_ANO"].dropna().unique().tolist()
         if meses_disp:
             meses_disp.sort(key=lambda x: datetime.strptime(x, "%m/%Y"))
-            mes_recente = meses_disp[-1]
+            mes_recente = meses_disp[-1] # Pega o último mês (mês atual)
             df_mes_recente = df_g[df_g["MES_ANO"] == mes_recente]
             total_glp_recente = df_mes_recente["KG_NUM"].sum()
 
@@ -402,15 +414,20 @@ if not df_glp.empty and len(df_glp.columns) >= 8:
             df_maq = df_mes_recente.groupby("MAQUINA")["KG_NUM"].sum().reset_index().sort_values(by="KG_NUM", ascending=False)
             
             if not df_maq.empty:
-                max_glp = df_maq["KG_NUM"].max()
+                chart_data_glp = []
                 for _, row in df_maq.iterrows():
-                    w_pct = min(100, (row["KG_NUM"] / max_glp) * 100)
-                    html_glp += f"<div class='bar-chart-row'><div class='bar-chart-labels'><span style='color:#94a3b8;'>{row['MAQUINA']}</span><span style='color:#fd7e14;'>{row['KG_NUM']:,.0f} kg</span></div><div class='bar-chart-bg'><div class='bar-chart-fill' style='width: {w_pct}%; background-color: #fd7e14;'></div></div></div>"
+                    chart_data_glp.append({
+                        "label": row["MAQUINA"],
+                        "value": row["KG_NUM"],
+                        "text": f"{row['KG_NUM']:,.0f} kg",
+                        "color": "#fd7e14"
+                    })
+                html_glp += build_vertical_chart(chart_data_glp)
             else:
-                html_glp += '<div style="color:gray;">Sem consumo registrado para o mês atual.</div>'
+                html_glp += '<div style="color:gray; text-align:center;">Sem consumo registrado.</div>'
             html_glp += '</div>'
 else:
-    html_glp += '<summary><div class="master-metric-title">⛽ Consumo de GLP</div></summary><div class="master-content"><div style="color:gray;">Planilha Abastecimentos_GLP indisponível.</div></div>'
+    html_glp += '<summary><div class="master-metric-title">⛽ Consumo de GLP</div></summary><div class="master-content"><div style="color:gray;">Planilha indisponível.</div></div>'
 
 html_glp += '</details>'
 st.markdown(html_glp, unsafe_allow_html=True)
