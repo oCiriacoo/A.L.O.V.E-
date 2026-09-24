@@ -6,7 +6,6 @@ import json
 import requests
 import csv
 from io import StringIO
-import altair as alt
 
 st.set_page_config(
     page_title="A.L.O.V.E. Mobile",
@@ -16,7 +15,7 @@ st.set_page_config(
 )
 
 # ==============================================================================
-# 🎨 CSS HÍBRIDO (CARD UNIFICADO COM EXPANDER COLADO)
+# 🎨 CSS AVANÇADO (CARDS CLICÁVEIS + GRÁFICOS + TABS CSS NATIVAS)
 # ==============================================================================
 st.markdown("""
     <style>
@@ -27,60 +26,68 @@ st.markdown("""
             padding-right: 0.8rem;
         }
         
-        /* Card Mestre (Topo) - Desenhado para colar no Expander do Streamlit */
-        .card-topo {
+        /* Mágica do Bloco Clicável (HTML details/summary nativo super polido) */
+        details.master-box {
             background-color: #111c2e;
-            border-top-left-radius: 12px;
-            border-top-right-radius: 12px;
-            padding: 16px 20px;
-            border: 1px solid #1c2b42;
-            border-bottom: none;
-            margin-bottom: -15px !important; /* Puxa o expander para colar */
-            position: relative;
-            z-index: 10;
-        }
-        .card-title { color: #94a3b8; font-size: 0.85rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-        .card-val { color: #ffffff; font-size: 2rem; font-weight: 900; line-height: 1.1; margin-bottom: 4px; }
-        .card-sub { font-size: 0.85rem; font-weight: 700; }
-
-        /* Estilização do Expander Nativo do Streamlit */
-        div[data-testid="stExpander"] {
-            border: 1px solid #1c2b42 !important;
-            border-top: none !important;
-            border-radius: 0 0 12px 12px !important;
-            background-color: #0a101d !important;
-            margin-bottom: 25px !important;
+            border-radius: 12px;
+            margin-bottom: 12px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-        }
-        div[data-testid="stExpander"] details summary {
-            background-color: #0d1522;
-            border-radius: 0 0 12px 12px;
-            padding: 10px 15px;
-            border-top: 1px dashed #1c2b42;
-        }
-        div[data-testid="stExpander"] details[open] summary {
+            border-left: 6px solid;
+            overflow: hidden;
+            border-top: 1px solid #1c2b42;
+            border-right: 1px solid #1c2b42;
             border-bottom: 1px solid #1c2b42;
-            border-radius: 0;
-            background-color: #0a101d;
         }
-        div[data-testid="stExpander"] details summary p {
-            color: #38bdf8;
-            font-size: 0.85rem;
-            font-weight: 700;
-            text-transform: uppercase;
+        details.master-box summary {
+            list-style: none;
+            cursor: pointer;
+            padding: 16px 20px;
+            position: relative;
+            outline: none;
         }
+        details.master-box summary::-webkit-details-marker { display: none; }
+        
+        /* Setinha customizada giratória */
+        details.master-box summary::after {
+            content: '▼';
+            position: absolute; right: 20px; top: 50%; transform: translateY(-50%);
+            color: #94a3b8; font-size: 1.2rem; transition: transform 0.3s ease;
+        }
+        details.master-box[open] summary::after { transform: translateY(-50%) rotate(180deg); color: #38bdf8; }
+        
+        .master-metric-title { color: #94a3b8; font-size: 0.85rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; padding-right: 20px;}
+        .master-metric-val { color: #ffffff; font-size: 2rem; font-weight: 900; line-height: 1.1; margin-bottom: 4px; }
+        .master-metric-sub { font-size: 0.85rem; font-weight: 700; }
+        .master-content { background-color: #0a101d; padding: 16px; border-top: 1px dashed #1c2b42; }
 
-        /* Sub-estilos Internos */
+        /* Pátio Grid */
         .patio-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
         .card-patio-sub { background-color: #111c2e; border-radius: 8px; padding: 10px; border-left: 4px solid; border: 1px solid #1c2b42;}
         .card-patio-title { font-weight: 800; font-size: 0.95rem; margin-bottom: 4px; }
         .card-patio-qtd { font-size: 1.4rem; font-weight: 900; color: #ffffff; }
         .card-patio-ton { font-size: 0.85rem; color: #94a3b8; font-weight: 600; }
 
-        .tag-box { display: inline-block; padding: 4px 10px; margin: 3px; border-radius: 6px; font-weight: 800; font-size: 0.8rem; text-align: center; }
+        /* Gráfico de Barras CSS (Grosso e Lindo) */
+        .bar-chart-row { margin-bottom: 14px; }
+        .bar-chart-labels { display: flex; justify-content: space-between; font-size: 0.9rem; font-weight: 700; color: #fff; margin-bottom: 6px; }
+        .bar-chart-bg { background-color: #1c2b42; border-radius: 4px; height: 22px; width: 100%; overflow: hidden; }
+        .bar-chart-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease-in-out; }
+
+        /* Tags Frota */
+        .tag-box { display: inline-block; padding: 6px 12px; margin: 3px; border-radius: 6px; font-weight: 800; font-size: 0.8rem; text-align: center; }
         .tag-op { background-color: #00D672; color: #0a101d; }
         .tag-standby { background-color: #E74C3C; color: #ffffff; }
         .tag-talha { background-color: #F39C12; color: #0a101d; }
+
+        /* 💡 TABS CSS MÁGICAS (Substitui o Selectbox) */
+        .css-tabs input[type="radio"] { display: none; }
+        .css-tabs label { display: inline-block; padding: 8px 12px; background-color: #1c2b42; color: #94a3b8; border-radius: 6px; font-size: 0.8rem; font-weight: 800; margin-bottom: 12px; margin-right: 6px; cursor: pointer; transition: 0.2s; }
+        .css-tabs input[type="radio"]:checked + label { background-color: #3498DB; color: #fff; }
+        .tab-content { display: none; animation: fadeIn 0.3s ease; }
+        #ftab0:checked ~ #fcontent0, #ftab1:checked ~ #fcontent1, #ftab2:checked ~ #fcontent2, #ftab3:checked ~ #fcontent3 { display: block; }
+        #gtab0:checked ~ #gcontent0, #gtab1:checked ~ #gcontent1, #gtab2:checked ~ #gcontent2 { display: block; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 """, unsafe_allow_html=True)
 
@@ -92,10 +99,11 @@ def carregar_dados_nuvem(worksheet_name: str, cabecalho=0):
     url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={sheet_encoded}"
     try:
         df = pd.read_csv(url, header=cabecalho)
-        return df.dropna(how="all", axis=1).dropna(how="all", axis=0)
+        df = df.dropna(how="all", axis=1).dropna(how="all", axis=0)
+        return df
     except Exception: return pd.DataFrame()
 
-# 🔥 PROTEÇÃO ANTIBUG DE TONELAGEM (ARRUMA VIRGULAS E PONTOS)
+# 🔥 PROTEÇÃO ANTIBUG DE TONELAGEM (ARRUMA VIRGULAS E PONTOS PARA SEMPRE)
 def safe_to_numeric(val):
     if pd.isna(val) or val == "" or val is None: return 0.0
     if isinstance(val, (int, float)): return float(val)
@@ -183,11 +191,10 @@ prev_prod = (prod_hoje / horas_passadas_prod) * 24
 horas_produtivas = sum((1.0 if h > agora.hour else (1.0 - (agora.minute / 60.0))) * (0.0 if 0 <= h < 8 and agora.weekday() in (0, 6) else (6.25 / 8.0)) for h in range(agora.hour, 24))
 cap_maxima_restante = horas_produtivas * 500.0
 
-# Pátio Físico: (00 + 01 + FC + TR)
+# Regra: Pátio Físico = Somente quem entrou (00, 01, FC, TR)
 total_veiculos_fisicos = sum(dados_patio.get(k, {}).get("veiculos", 0) for k in ["00", "01", "FC", "TR"]) if dados_patio else 0
-# Disponível p/ Carga: Somente 00 + 01 + FC (Ignora PR e TR)
+# Regra: Disponível p/ Carga = Somente 00, 01, FC
 vol_patio_disponivel = sum(dados_patio.get(k, {}).get("peso", 0.0) for k in ["00", "01", "FC"]) if dados_patio else 0.0
-
 prev_carr = vol_hoje + min(cap_maxima_restante, vol_patio_disponivel)
 
 # ==============================================================================
@@ -210,132 +217,149 @@ if observacoes and observacoes.strip() not in ["", "None"]:
 st.write("")
 
 # ==============================================================================
-# 📦 BLOCO 1: PÁTIO DE VEÍCULOS
+# 📦 BLOCO 1: PÁTIO DE VEÍCULOS (HTML DETAILS)
 # ==============================================================================
-st.markdown(f"""
-    <div class="card-topo" style="border-left-color: #38bdf8;">
-        <div class="card-title">🚛 Pátio da Fábrica (Tempo Real)</div>
-        <div class="card-val">{total_veiculos_fisicos} <span style="font-size:1.1rem; color:#94a3b8;">Veículos Físicos</span></div>
-        <div class="card-sub" style="color: #38bdf8;">Carga Disponível p/ Carregar: {vol_patio_disponivel:,.0f} t</div>
-    </div>
-""", unsafe_allow_html=True)
-
-with st.expander("👇 Ver detalhamento por Status"):
-    if dados_patio:
-        blocos_patio = [("🚙 Prog/Chegando", "PR", "#94A3B8"), ("📋 Checklist", "00", "#E5B800"), ("🚛 Apoio", "01", "#E67E22"), ("✅ Fila", "FC", "#00D672"), ("📄 Termo SAP", "TR", "#3498DB")]
-        html_p = '<div class="patio-grid">'
-        for tit, chv, cor in blocos_patio:
-            v_qtd = dados_patio.get(chv, {}).get("veiculos", 0)
-            v_ton = dados_patio.get(chv, {}).get("peso", 0.0)
-            html_p += f"<div class='card-patio-sub' style='border-left-color: {cor};'><div class='card-patio-title' style='color: {cor};'>{tit}</div><div class='card-patio-qtd'>{int(v_qtd)} <span style='font-size:0.75rem; color:#94a3b8;'>veíc</span></div><div class='card-patio-ton'>{v_ton:,.0f} t</div></div>"
-        html_p += "</div>"
-        st.markdown(html_p, unsafe_allow_html=True)
-    else:
-        st.caption("Sem dados de pátio.")
-
-# ==============================================================================
-# 🏭 BLOCO 2: PRODUÇÃO DO DIA
-# ==============================================================================
-st.markdown(f"""
-    <div class="card-topo" style="border-left-color: #E5B800;">
-        <div class="card-title">🏭 Produção de Celulose (Hoje)</div>
-        <div class="card-val">{prod_hoje:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div>
-        <div class="card-sub" style="color: #E5B800;">Previsão de Fechamento: {prev_prod:,.0f} t</div>
-    </div>
-""", unsafe_allow_html=True)
-
-with st.expander("👇 Ver Máquinas e Qualidade"):
-    if qualidade:
-        for maq in ["MS1", "MS2"]:
-            p_maq = safe_to_numeric(qualidade.get(maq, {}).get("producao", 0))
-            mat_maq = qualidade.get(maq, {}).get("material", "--")
-            q_suj = qualidade.get(maq, {}).get('sujidade', 0.0)
-            q_visc = qualidade.get(maq, {}).get('viscosidade', 0.0)
-            q_teor = qualidade.get(maq, {}).get('teor', 0.0)
-            c_suj = "#00D672" if q_suj <= 2.5 else "#E74C3C"
-            c_vis = "#00D672" if q_visc >= 650 else "#E74C3C"
-            c_teo = "#00D672" if q_teor >= 88.5 else "#E74C3C"
-
-            st.markdown(f"""
-                <div style="background-color: #111c2e; border: 1px solid #1c2b42; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                        <span style="color:#ffffff; font-weight:800; font-size:1rem;">⚙️ {maq}</span>
-                        <span style="color:#FF9F1C; font-weight:800; font-size:0.85rem;">📦 MAT: {mat_maq}</span>
-                        <span style="color:#3498DB; font-weight:900; font-size:1rem;">{p_maq:,.0f} t</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; text-align: center; border-top: 1px solid #1c2b42; padding-top: 8px;">
-                        <div><div style="font-size:0.75rem; color:#94a3b8;">Sujidade</div><div style="font-size:1.05rem; font-weight:bold; color:{c_suj};">{q_suj:.2f}</div></div>
-                        <div><div style="font-size:0.75rem; color:#94a3b8;">Viscosidade</div><div style="font-size:1.05rem; font-weight:bold; color:{c_vis};">{q_visc:,.0f}</div></div>
-                        <div><div style="font-size:0.75rem; color:#94a3b8;">Teor Seco</div><div style="font-size:1.05rem; font-weight:bold; color:{c_teo};">{q_teor:.2f}%</div></div>
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
+html_patio = f"""
+<details class="master-box" style="border-left-color: #38bdf8;">
+    <summary>
+        <div class="master-metric-title">🚛 Pátio da Fábrica (Tempo Real)</div>
+        <div class="master-metric-val">{total_veiculos_fisicos} <span style="font-size:1.1rem; color:#94a3b8;">Veículos Físicos</span></div>
+        <div class="master-metric-sub" style="color: #38bdf8;">Carga Disponível p/ Carregar: {vol_patio_disponivel:,.0f} t</div>
+    </summary>
+    <div class="master-content patio-grid">
+"""
+if dados_patio:
+    blocos_patio = [("🚙 Prog/Chegando", "PR", "#94A3B8"), ("📋 Checklist", "00", "#E5B800"), ("🚛 Apoio", "01", "#E67E22"), ("✅ Fila", "FC", "#00D672"), ("📄 Termo SAP", "TR", "#3498DB")]
+    for tit, chv, cor in blocos_patio:
+        v_qtd = dados_patio.get(chv, {}).get("veiculos", 0)
+        v_ton = dados_patio.get(chv, {}).get("peso", 0.0)
+        html_patio += f"<div class='card-patio-sub' style='border-left-color: {cor};'><div class='card-patio-title' style='color: {cor};'>{tit}</div><div class='card-patio-qtd'>{int(v_qtd)} <span style='font-size:0.75rem; color:#94a3b8;'>veíc</span></div><div class='card-patio-ton'>{v_ton:,.0f} t</div></div>"
+else:
+    html_patio += '<div style="color:gray;">Sem dados de pátio.</div>'
+html_patio += "</div></details>"
+st.markdown(html_patio, unsafe_allow_html=True)
 
 # ==============================================================================
-# 🚚 BLOCO 3: EXPEDIÇÃO DO DIA & GRÁFICO ALTAIR
+# 🏭 BLOCO 2: PRODUÇÃO DO DIA (HTML DETAILS)
 # ==============================================================================
-st.markdown(f"""
-    <div class="card-topo" style="border-left-color: #00D672;">
-        <div class="card-title">🚛 Expedição Realizada (Hoje)</div>
-        <div class="card-val">{vol_hoje:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div>
-        <div class="card-sub" style="color: #00D672;">Previsão de Fechamento: {prev_carr:,.0f} t</div>
-    </div>
-""", unsafe_allow_html=True)
+html_prod = f"""
+<details class="master-box" style="border-left-color: #E5B800;">
+    <summary>
+        <div class="master-metric-title">🏭 Produção de Celulose (Hoje)</div>
+        <div class="master-metric-val">{prod_hoje:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div>
+        <div class="master-metric-sub" style="color: #E5B800;">Previsão de Fechamento: {prev_prod:,.0f} t</div>
+    </summary>
+    <div class="master-content">
+"""
+if qualidade:
+    for maq in ["MS1", "MS2"]:
+        p_maq = safe_to_numeric(qualidade.get(maq, {}).get("producao", 0))
+        mat_maq = qualidade.get(maq, {}).get("material", "--")
+        q_suj = qualidade.get(maq, {}).get('sujidade', 0.0)
+        q_visc = qualidade.get(maq, {}).get('viscosidade', 0.0)
+        q_teor = qualidade.get(maq, {}).get('teor', 0.0)
+        c_suj = "#00D672" if q_suj <= 2.5 else "#E74C3C"
+        c_vis = "#00D672" if q_visc >= 650 else "#E74C3C"
+        c_teo = "#00D672" if q_teor >= 88.5 else "#E74C3C"
 
-with st.expander("👇 Ver Gráfico por Turno"):
-    if dados_turnos and "turnos" in dados_turnos:
-        turnos_list = dados_turnos["turnos"]
-        ativo_key = dados_turnos.get("ativo_key")
-
-        html_t_cards = '<div style="display:flex; gap:6px; margin-bottom:12px;">'
-        for t in turnos_list:
-            is_atv = (t["key"] == ativo_key)
-            cor_b = "#FF9F1C" if is_atv else "#1c2b42"
-            cor_txt = "#FF9F1C" if is_atv else "#ffffff"
-            sub_txt = f"{t['horario']} (ATIVO)" if is_atv else t['horario']
-            html_t_cards += f"<div style='flex:1; background-color:#0a101d; border:1.5px solid {cor_b}; border-radius:8px; padding:8px; text-align:center;'><div style='font-size:0.75rem; font-weight:800; color:{cor_txt};'>{t['letra']}</div><div style='font-size:1.1rem; font-weight:900; color:#ffffff;'>{t['vol']:,.0f} t</div><div style='font-size:0.65rem; color:#94a3b8;'>{sub_txt}</div></div>"
-        html_t_cards += '</div>'
-        st.markdown(html_t_cards, unsafe_allow_html=True)
-
-        df_vol = pd.DataFrame([{"Turno": t['letra'], "Toneladas": t["vol"], "Cor": "#FF9F1C" if t["key"] == ativo_key else "#3498DB"} for t in turnos_list])
-        if not df_vol.empty:
-            max_vol = max(df_vol["Toneladas"]) if max(df_vol["Toneladas"]) > 0 else 100
-            bars = alt.Chart(df_vol).mark_bar(cornerRadius=6).encode(x=alt.X("Turno:N", sort=None, axis=alt.Axis(labelAngle=0, labelColor="#ffffff", title=None)), y=alt.Y("Toneladas:Q", scale=alt.Scale(domain=[0, max_vol * 1.3]), axis=None), color=alt.Color("Cor:N", scale=None))
-            text = bars.mark_text(align='center', baseline='bottom', dy=-5, color='white', fontSize=13, fontWeight='bold').encode(text=alt.Text('Toneladas:Q', format=',.0f'))
-            st.altair_chart((bars + text).properties(height=180, background="transparent"), use_container_width=True)
-    else:
-        st.caption("Aguardando carregamento da escala de turnos.")
-
-# ==============================================================================
-# 📦 BLOCO 4: ESTOQUE TOTAL
-# ==============================================================================
-st.markdown(f"""
-    <div class="card-topo" style="border-left-color: #9b59b6;">
-        <div class="card-title">📦 Estoque Físico no Armazém</div>
-        <div class="card-val">{estoque_total:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div>
-        <div class="card-sub" style="color: #9b59b6;">Distribuição por Material</div>
-    </div>
-""", unsafe_allow_html=True)
-
-with st.expander("👇 Ver Gráfico por Material"):
-    if dados_segregados:
-        df_seg = pd.DataFrame(list(dados_segregados.items()), columns=["Material", "Toneladas"]).sort_values(by="Toneladas", ascending=False)
-        if not df_seg.empty:
-            bars_seg = alt.Chart(df_seg).mark_bar(cornerRadius=4).encode(x=alt.X("Material:N", sort="-y", axis=alt.Axis(labelAngle=-45, labelColor="#94a3b8", title=None)), y=alt.Y("Toneladas:Q", axis=None), color=alt.value("#38bdf8"))
-            text_seg = bars_seg.mark_text(align='center', baseline='bottom', dy=-3, color='white', fontSize=11, fontWeight='bold').encode(text=alt.Text('Toneladas:Q', format=',.0f'))
-            st.altair_chart((bars_seg + text_seg).properties(height=200, background="transparent"), use_container_width=True)
-    else:
-        st.caption("Aguardando detalhamento de material...")
+        html_prod += f"""
+        <div style="background-color: #111c2e; border: 1px solid #1c2b42; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span style="color:#ffffff; font-weight:800; font-size:1rem;">⚙️ {maq}</span>
+                <span style="color:#FF9F1C; font-weight:800; font-size:0.85rem;">📦 MAT: {mat_maq}</span>
+                <span style="color:#3498DB; font-weight:900; font-size:1rem;">{p_maq:,.0f} t</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; text-align: center; border-top: 1px dashed #1c2b42; padding-top: 8px;">
+                <div><div style="font-size:0.75rem; color:#94a3b8;">Sujidade</div><div style="font-size:1.05rem; font-weight:bold; color:{c_suj};">{q_suj:.2f}</div></div>
+                <div><div style="font-size:0.75rem; color:#94a3b8;">Viscosidade</div><div style="font-size:1.05rem; font-weight:bold; color:{c_vis};">{q_visc:,.0f}</div></div>
+                <div><div style="font-size:0.75rem; color:#94a3b8;">Teor Seco</div><div style="font-size:1.05rem; font-weight:bold; color:{c_teo};">{q_teor:.2f}%</div></div>
+            </div>
+        </div>
+        """
+else: html_prod += '<div style="color:gray;">Aguardando máquinas...</div>'
+html_prod += "</div></details>"
+st.markdown(html_prod, unsafe_allow_html=True)
 
 # ==============================================================================
-# 🚜 BLOCO 5: FROTA (COM CAIXA DE SELEÇÃO)
+# 🚚 BLOCO 3: EXPEDIÇÃO DO DIA E TURNOS (GRÁFICO BARRAS CSS ESPESSO)
+# ==============================================================================
+html_exp = f"""
+<details class="master-box" style="border-left-color: #00D672;">
+    <summary>
+        <div class="master-metric-title">🚛 Expedição Realizada (Hoje)</div>
+        <div class="master-metric-val">{vol_hoje:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div>
+        <div class="master-metric-sub" style="color: #00D672;">Previsão de Fechamento: {prev_carr:,.0f} t</div>
+    </summary>
+    <div class="master-content">
+"""
+if dados_turnos and "turnos" in dados_turnos:
+    turnos_list = dados_turnos["turnos"]
+    ativo_key = dados_turnos.get("ativo_key")
+
+    html_exp += '<div style="display:flex; gap:6px; margin-bottom:16px;">'
+    for t in turnos_list:
+        is_atv = (t["key"] == ativo_key)
+        cor_b = "#FF9F1C" if is_atv else "#1c2b42"
+        cor_txt = "#FF9F1C" if is_atv else "#ffffff"
+        sub_txt = f"{t['horario']} (ATIVO)" if is_atv else t['horario']
+        html_exp += f"<div style='flex:1; background-color:#111c2e; border:1.5px solid {cor_b}; border-radius:8px; padding:8px; text-align:center;'><div style='font-size:0.75rem; font-weight:800; color:{cor_txt};'>{t['letra']}</div><div style='font-size:1.1rem; font-weight:900; color:#ffffff;'>{t['vol']:,.0f} t</div><div style='font-size:0.65rem; color:#94a3b8;'>{sub_txt}</div></div>"
+    html_exp += '</div>'
+
+    html_exp += '<div style="margin-top: 10px;">'
+    max_vol = max([t["vol"] for t in turnos_list] + [100])
+    for t in turnos_list:
+        w_pct = min(100, (t["vol"] / max_vol) * 100)
+        c_barra = "#FF9F1C" if t["key"] == ativo_key else "#3498DB"
+        html_exp += f"""
+        <div class="bar-chart-row">
+            <div class="bar-chart-labels"><span>{t['letra']}</span><span style="color:{c_barra};">{t['vol']:,.0f} t</span></div>
+            <div class="bar-chart-bg"><div class="bar-chart-fill" style="width: {w_pct}%; background-color: {c_barra};"></div></div>
+        </div>
+        """
+    html_exp += '</div>'
+else: html_exp += '<div style="color:gray;">Aguardando escala de turnos...</div>'
+html_exp += "</div></details>"
+st.markdown(html_exp, unsafe_allow_html=True)
+
+# ==============================================================================
+# 📦 BLOCO 4: ESTOQUE TOTAL E MATERIAIS (GRÁFICO BARRAS CSS ESPESSO)
+# ==============================================================================
+html_est = f"""
+<details class="master-box" style="border-left-color: #9b59b6;">
+    <summary>
+        <div class="master-metric-title">📦 Estoque Físico no Armazém</div>
+        <div class="master-metric-val">{estoque_total:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div>
+        <div class="master-metric-sub" style="color: #9b59b6;">Distribuição por Material</div>
+    </summary>
+    <div class="master-content">
+"""
+if dados_segregados:
+    df_seg = pd.DataFrame(list(dados_segregados.items()), columns=["Material", "Toneladas"]).sort_values(by="Toneladas", ascending=False)
+    max_mat_vol = df_seg["Toneladas"].max() if not df_seg.empty else 100
+    for _, row in df_seg.iterrows():
+        w_pct = min(100, (row["Toneladas"] / max_mat_vol) * 100)
+        html_est += f"""
+        <div class="bar-chart-row">
+            <div class="bar-chart-labels"><span style="color:#94a3b8;">{row['Material']}</span><span style="color:#38bdf8;">{row['Toneladas']:,.0f} t</span></div>
+            <div class="bar-chart-bg"><div class="bar-chart-fill" style="width: {w_pct}%; background-color: #38bdf8;"></div></div>
+        </div>
+        """
+else: html_est += '<div style="color:gray;">Aguardando detalhamento de material...</div>'
+html_est += "</div></details>"
+st.markdown(html_est, unsafe_allow_html=True)
+
+# ==============================================================================
+# 🚜 BLOCO 5: FROTA (TABS NATIVAS EM CSS PARA SUBSTITUIR O SELECTBOX)
 # ==============================================================================
 df_frota = carregar_dados_nuvem("Rodizio_Frota")
 equip_em_uso_agora = 0
 
+html_frota = f'<details class="master-box" style="border-left-color: #E67E22;">'
+
 if not df_frota.empty:
     col_t = "TURNO_JANELA" if "TURNO_JANELA" in df_frota.columns else df_frota.columns[0]
     turnos_frota = df_frota[col_t].dropna().unique().tolist()
+    
     idx_sug = next((i for i, t in enumerate(turnos_frota) if ("00:00" in str(t) and 0 <= agora.hour < 8) or ("08:00" in str(t) and 8 <= agora.hour < 16) or ("16:00" in str(t) and 16 <= agora.hour <= 23)), 0)
     turno_atual_str = turnos_frota[idx_sug] if turnos_frota else ""
     df_f_agora = df_frota[df_frota[col_t] == turno_atual_str]
@@ -345,44 +369,65 @@ if not df_frota.empty:
     op3 = df_f_agora[(df_f_agora["POSTO"].astype(str).str.contains("TALHA", case=False) | df_f_agora["EQUIPAMENTO"].astype(str).str.contains("TALHA", case=False)) & (df_f_agora["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]
     equip_em_uso_agora = len(op1) + len(op2) + len(op3)
 
-st.markdown(f"""
-    <div class="card-topo" style="border-left-color: #E67E22;">
-        <div class="card-title">🚜 Equipamentos em Operação</div>
-        <div class="card-val">{equip_em_uso_agora} <span style="font-size:1.1rem; color:#94a3b8;">Neste Exato Momento</span></div>
-        <div class="card-sub" style="color: #E67E22;">Contempla Empilhadeiras e Talhas</div>
-    </div>
-""", unsafe_allow_html=True)
-
-with st.expander("👇 Ver Turnos e Janelas da Frota"):
-    if not df_frota.empty:
-        turno_sel = st.selectbox("Selecione o Horário / Janela:", turnos_frota, index=idx_sug)
-        df_t = df_frota[df_frota[col_t] == turno_sel]
-
+    html_frota += f"""
+        <summary>
+            <div class="master-metric-title">🚜 Equipamentos em Operação</div>
+            <div class="master-metric-val">{equip_em_uso_agora} <span style="font-size:1.1rem; color:#94a3b8;">Neste Exato Momento</span></div>
+            <div class="master-metric-sub" style="color: #E67E22;">Contempla Empilhadeiras e Talhas</div>
+        </summary>
+        <div class="master-content css-tabs">
+            <div style="color: #94a3b8; font-size: 0.8rem; margin-bottom: 8px;">Selecione o Turno/Janela:</div>
+    """
+    
+    # Gera os Botões de Rádio Escondidos e Labels (Tabs)
+    for i, t_str in enumerate(turnos_frota):
+        checked = "checked" if i == idx_sug else ""
+        html_frota += f'<input type="radio" name="ftabs" id="ftab{i}" {checked}><label for="ftab{i}">{t_str}</label>'
+    
+    # Gera o Conteúdo de cada Tab
+    for i, t_str in enumerate(turnos_frota):
+        df_t = df_frota[df_frota[col_t] == t_str]
         carr = df_t[(df_t["POSTO"].astype(str).str.contains("CARREG", case=False)) & (df_t["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
         linha = df_t[(df_t["POSTO"].astype(str).str.contains("LINHA", case=False)) & (df_t["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
         talhas = df_t[(df_t["POSTO"].astype(str).str.contains("TALHA", case=False) | df_t["EQUIPAMENTO"].astype(str).str.contains("TALHA", case=False)) & (df_t["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
         paradas = df_t[df_t["STATUS_RODIZIO"].astype(str).str.contains("STAND", case=False)]["EQUIPAMENTO"].tolist()
 
-        st.markdown("**🟢 Empilhadeiras - Carregamento:**")
-        st.markdown(" ".join([f'<span class="tag-box tag-op">{t}</span>' for t in carr]) if carr else "<span style='color:gray; font-size:0.85rem;'>Nenhum</span>", unsafe_allow_html=True)
-        st.markdown("<br>**🟢 Empilhadeiras - Linha:**", unsafe_allow_html=True)
-        st.markdown(" ".join([f'<span class="tag-box tag-op">{t}</span>' for t in linha]) if linha else "<span style='color:gray; font-size:0.85rem;'>Nenhum</span>", unsafe_allow_html=True)
-        st.markdown("<br>**🏗️ Ponte Rolante / Talhas:**", unsafe_allow_html=True)
-        st.markdown(" ".join([f'<span class="tag-box tag-talha">{t}</span>' for t in talhas]) if talhas else "<span style='color:gray; font-size:0.85rem;'>Nenhuma operando</span>", unsafe_allow_html=True)
-        st.markdown("<br>**🔴 Stand-by / Paradas:**", unsafe_allow_html=True)
-        st.markdown(" ".join([f'<span class="tag-box tag-standby">{t}</span>' for t in paradas]) if paradas else "<span style='color:gray; font-size:0.85rem;'>Nenhum</span>", unsafe_allow_html=True)
+        str_carr = " ".join([f"<span class='tag-box tag-op'>{t}</span>" for t in carr]) if carr else "<span style='color:gray; font-size:0.8rem;'>Nenhum</span>"
+        str_linha = " ".join([f"<span class='tag-box tag-op'>{t}</span>" for t in linha]) if linha else "<span style='color:gray; font-size:0.8rem;'>Nenhum</span>"
+        str_talha = " ".join([f"<span class='tag-box tag-talha'>{t}</span>" for t in talhas]) if talhas else "<span style='color:gray; font-size:0.8rem;'>Nenhuma operando</span>"
+        str_parada = " ".join([f"<span class='tag-box tag-standby'>{t}</span>" for t in paradas]) if paradas else "<span style='color:gray; font-size:0.8rem;'>Nenhum</span>"
+
+        html_frota += f"""
+        <div class="tab-content" id="fcontent{i}">
+            <div style="margin-bottom:6px; font-size:0.85rem; color:#fff; font-weight:800; margin-top:8px;">🟢 Empilhadeiras - Carregamento:</div>
+            <div style="margin-bottom:14px;">{str_carr}</div>
+            <div style="margin-bottom:6px; font-size:0.85rem; color:#fff; font-weight:800;">🟢 Empilhadeiras - Linha:</div>
+            <div style="margin-bottom:14px;">{str_linha}</div>
+            <div style="margin-bottom:6px; font-size:0.85rem; color:#fff; font-weight:800;">🏗️ Pontes Rolantes / Talhas:</div>
+            <div style="margin-bottom:14px;">{str_talha}</div>
+            <div style="margin-bottom:6px; font-size:0.85rem; color:#fff; font-weight:800;">🔴 Stand-by / Paradas:</div>
+            <div style="margin-bottom:4px;">{str_parada}</div>
+        </div>
+        """
+else:
+    html_frota += '<summary><div class="master-metric-title">🚜 Equipamentos</div></summary><div class="master-content"><div style="color:gray;">Planilha Rodizio_Frota indisponível.</div></div>'
+
+html_frota += '</details>'
+st.markdown(html_frota, unsafe_allow_html=True)
 
 # ==============================================================================
-# ⛽ BLOCO 6: CONSUMO GLP MENSAL (COM CAIXA DE SELEÇÃO)
+# ⛽ BLOCO 6: CONSUMO GLP MENSAL (TABS NATIVAS EM CSS)
 # ==============================================================================
 df_glp = carregar_dados_nuvem("Abastecimentos_GLP", cabecalho=None)
 total_glp_recente = 0
 mes_recente = "--/----"
 
+html_glp = '<details class="master-box" style="border-left-color: #fd7e14;">'
+
 if not df_glp.empty and len(df_glp.columns) >= 8:
     df_g = pd.DataFrame()
     df_g["DATA_DT"] = pd.to_datetime(df_glp.iloc[:, 2].astype(str).str.strip(), format="%d/%m/%Y", errors="coerce")
-    df_g = df_g.dropna(subset=["DATA_DT"]) 
+    df_g = df_g.dropna(subset=["DATA_DT"])
     
     if not df_g.empty:
         df_g["MES_ANO"] = df_g["DATA_DT"].dt.strftime("%m/%Y")
@@ -395,28 +440,45 @@ if not df_glp.empty and len(df_glp.columns) >= 8:
             mes_recente = meses_disp[-1]
             total_glp_recente = df_g[df_g["MES_ANO"] == mes_recente]["KG_NUM"].sum()
 
-st.markdown(f"""
-    <div class="card-topo" style="border-left-color: #fd7e14;">
-        <div class="card-title">⛽ Consumo de GLP da Frota</div>
-        <div class="card-val">{total_glp_recente:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">KG</span></div>
-        <div class="card-sub" style="color: #fd7e14;">Acumulado do Mês Atual ({mes_recente})</div>
-    </div>
-""", unsafe_allow_html=True)
+            html_glp += f"""
+            <summary>
+                <div class="master-metric-title">⛽ Consumo de GLP da Frota</div>
+                <div class="master-metric-val">{total_glp_recente:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">KG</span></div>
+                <div class="master-metric-sub" style="color: #fd7e14;">Acumulado do Mês Atual ({mes_recente})</div>
+            </summary>
+            <div class="master-content css-tabs">
+                <div style="color: #94a3b8; font-size: 0.8rem; margin-bottom: 8px;">Selecione o Mês:</div>
+            """
+            
+            # Limita a mostrar até os últimos 3 meses para caber bonito
+            meses_disp_lim = meses_disp[-3:]
+            
+            for i, m_str in enumerate(reversed(meses_disp_lim)):
+                checked = "checked" if i == 0 else ""
+                html_glp += f'<input type="radio" name="gtabs" id="gtab{i}" {checked}><label for="gtab{i}">{m_str}</label>'
+            
+            for i, m_str in enumerate(reversed(meses_disp_lim)):
+                df_mes = df_g[df_g["MES_ANO"] == m_str]
+                df_maq = df_mes.groupby("MAQUINA")["KG_NUM"].sum().reset_index().sort_values(by="KG_NUM", ascending=False)
+                
+                html_glp += f'<div class="tab-content" id="gcontent{i}">'
+                if not df_maq.empty:
+                    max_glp = df_maq["KG_NUM"].max()
+                    for _, row in df_maq.iterrows():
+                        w_pct = min(100, (row["KG_NUM"] / max_glp) * 100)
+                        html_glp += f"""
+                        <div class="bar-chart-row">
+                            <div class="bar-chart-labels"><span style="color:#94a3b8;">{row['MAQUINA']}</span><span style="color:#fd7e14;">{row['KG_NUM']:,.0f} kg</span></div>
+                            <div class="bar-chart-bg"><div class="bar-chart-fill" style="width: {w_pct}%; background-color: #fd7e14;"></div></div>
+                        </div>
+                        """
+                else: html_glp += '<div style="color:gray;">Sem consumo.</div>'
+                html_glp += '</div>'
+            html_glp += '</div>'
+else:
+    html_glp += '<summary><div class="master-metric-title">⛽ Consumo de GLP</div></summary><div class="master-content"><div style="color:gray;">Planilha Abastecimentos_GLP indisponível.</div></div>'
 
-with st.expander("👇 Ver Gráfico de Consumo por Máquina"):
-    if not df_glp.empty and 'df_g' in locals() and not df_g.empty and meses_disp:
-        mes_sel_glp = st.selectbox("Selecione o Mês Referência:", meses_disp, index=len(meses_disp)-1)
-        df_mes_selecionado = df_g[df_g["MES_ANO"] == mes_sel_glp]
-        df_maq = df_mes_selecionado.groupby("MAQUINA")["KG_NUM"].sum().reset_index().sort_values(by="KG_NUM", ascending=False)
-        
-        if not df_maq.empty:
-            bars_glp = alt.Chart(df_maq).mark_bar(cornerRadius=4).encode(
-                x=alt.X("MAQUINA:N", sort="-y", axis=alt.Axis(labelAngle=-45, labelColor="#94a3b8", title=None)),
-                y=alt.Y("KG_NUM:Q", axis=None), color=alt.value("#fd7e14")
-            )
-            text_glp = bars_glp.mark_text(align='center', baseline='bottom', dy=-3, color='white', fontSize=11, fontWeight='bold').encode(text=alt.Text('KG_NUM:Q', format=',.0f'))
-            st.altair_chart((bars_glp + text_glp).properties(height=200, background="transparent"), use_container_width=True)
-    else:
-        st.caption("Planilha Abastecimentos_GLP indisponível ou sem datas válidas.")
+html_glp += '</details>'
+st.markdown(html_glp, unsafe_allow_html=True)
 
 st.markdown("<br><center><span style='color:#94a3b8; font-size: 0.75rem;'>Logística MI | A.L.O.V.E Core Mobile Dashboard</span></center>", unsafe_allow_html=True)
