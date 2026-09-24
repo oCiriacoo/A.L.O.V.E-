@@ -101,9 +101,16 @@ def safe_to_numeric(val):
 df_cache = carregar_dados("Cache_Painel", cabecalho=0)
 cache_dict = {str(row.iloc[0]).strip(): str(row.iloc[1]).strip() for _, row in df_cache.iterrows()} if not df_cache.empty else {}
 
-dados_patio = json.loads(cache_dict.get("dados_patio", "{}"))
-qualidade = json.loads(cache_dict.get("qualidade", "{}"))
-dados_turnos = json.loads(cache_dict.get("dados_turnos", "{}"))
+dados_patio = {}
+qualidade = {}
+dados_turnos = {}
+
+try: dados_patio = json.loads(cache_dict.get("dados_patio", "{}"))
+except: pass
+try: qualidade = json.loads(cache_dict.get("qualidade", "{}"))
+except: pass
+try: dados_turnos = json.loads(cache_dict.get("dados_turnos", "{}"))
+except: pass
 
 vol_hoje = safe_to_numeric(cache_dict.get("vol_hoje", 0))
 estoque_total = safe_to_numeric(cache_dict.get("estoque_total", 0))
@@ -165,18 +172,16 @@ with tab_carretas:
             ("📄 Termo", "TR", "#3498DB"),
         ]
         
-        # Cria a grade HTML
+        # Correção da renderização do HTML (sem espaços indesejados)
         html_cards = '<div class="patio-grid">'
         for titulo, chave, cor in blocos:
             qtd = dados_patio.get(chave, {}).get("veiculos", 0)
             peso = dados_patio.get(chave, {}).get("peso", 0.0)
-            html_cards += f"""
-                <div class="card-patio" style="border-color: {cor};">
-                    <div class="card-patio-title" style="color: {cor};">{titulo}</div>
-                    <div class="card-patio-qtd" style="color: #ffffff;">{int(qtd)} <span style="font-size:0.9rem; color:#94a3b8; font-weight:600;">Veíc</span></div>
-                    <div class="card-patio-ton">{peso:,.0f} t</div>
-                </div>
-            """
+            html_cards += f'<div class="card-patio" style="border-color: {cor};">'
+            html_cards += f'<div class="card-patio-title" style="color: {cor};">{titulo}</div>'
+            html_cards += f'<div class="card-patio-qtd" style="color: #ffffff;">{int(qtd)} <span style="font-size:0.9rem; color:#94a3b8; font-weight:600;">Veíc</span></div>'
+            html_cards += f'<div class="card-patio-ton">{peso:,.0f} t</div>'
+            html_cards += '</div>'
         html_cards += '</div>'
         st.markdown(html_cards, unsafe_allow_html=True)
     else:
@@ -215,13 +220,12 @@ with tab_prod_exp:
         turnos_list = dados_turnos["turnos"]
         ativo_key = dados_turnos.get("ativo_key")
         
-        # Constrói o DataFrame para o gráfico
         data_grafico = []
         for t in turnos_list:
             data_grafico.append({
                 "Turno": f"{t['letra']} ({t['horario'].split('-')[0].strip()})",
                 "Toneladas": t["vol"],
-                "Cor": "#FF9F1C" if t["key"] == ativo_key else "#3498DB" # Laranja se ativo, Azul se inativo
+                "Cor": "#FF9F1C" if t["key"] == ativo_key else "#3498DB"
             })
             
         df_vol = pd.DataFrame(data_grafico)
@@ -230,7 +234,7 @@ with tab_prod_exp:
         bars = alt.Chart(df_vol).mark_bar(cornerRadius=6).encode(
             x=alt.X("Turno:N", sort=None, axis=alt.Axis(labelAngle=0, labelColor="#94a3b8", title=None)),
             y=alt.Y("Toneladas:Q", scale=alt.Scale(domain=[0, max_vol * 1.3]), axis=None),
-            color=alt.Color("Cor:N", scale=None) # Usa a cor exata definida na coluna
+            color=alt.Color("Cor:N", scale=None) 
         )
         
         text = bars.mark_text(align='center', baseline='bottom', dy=-5, color='white', fontSize=14, fontWeight='bold').encode(
