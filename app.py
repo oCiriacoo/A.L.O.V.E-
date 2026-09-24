@@ -15,12 +15,12 @@ st.set_page_config(
 )
 
 # ==============================================================================
-# 🎨 CSS PURO (BLOCOS CLICÁVEIS E GRÁFICOS NATIVOS)
+# 🎨 CSS PURO (BLOCOS CLICÁVEIS E GRÁFICOS NATIVOS MÓVEIS)
 # ==============================================================================
 st.markdown("""
     <style>
         .block-container {
-            padding-top: 1.8rem;
+            padding-top: 1.5rem;
             padding-bottom: 2rem;
             padding-left: 0.8rem;
             padding-right: 0.8rem;
@@ -42,7 +42,6 @@ st.markdown("""
             position: relative;
         }
         details.master-box summary::-webkit-details-marker { display: none; }
-        
         details.master-box summary::after {
             content: '▼';
             position: absolute;
@@ -53,14 +52,11 @@ st.markdown("""
             font-size: 1.1rem;
             transition: transform 0.3s ease;
         }
-        details.master-box[open] summary::after {
-            transform: translateY(-50%) rotate(180deg);
-        }
+        details.master-box[open] summary::after { transform: translateY(-50%) rotate(180deg); }
 
         .master-metric-title { color: #94a3b8; font-size: 0.85rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
         .master-metric-val { color: #ffffff; font-size: 1.9rem; font-weight: 900; line-height: 1.2; margin-bottom: 4px; }
         .master-metric-sub { font-size: 0.85rem; font-weight: 700; }
-        
         .master-content { background-color: #0a101d; padding: 16px; border-top: 1px solid #1c2b42; }
 
         .patio-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
@@ -74,10 +70,11 @@ st.markdown("""
         .bar-chart-bg { background-color: #1c2b42; border-radius: 6px; height: 14px; width: 100%; overflow: hidden; }
         .bar-chart-fill { height: 100%; border-radius: 6px; transition: width 0.5s ease-in-out; }
 
-        .tag-box { display: inline-block; padding: 4px 10px; margin: 3px; border-radius: 6px; font-weight: 800; font-size: 0.8rem; }
+        .tag-box { display: inline-block; padding: 4px 8px; margin: 3px; border-radius: 6px; font-weight: 800; font-size: 0.75rem; }
         .tag-op { background-color: #00D672; color: #0a101d; }
         .tag-standby { background-color: #E74C3C; color: #ffffff; }
         .tag-talha { background-color: #F39C12; color: #0a101d; }
+        .shift-header { color: #3498DB; font-size: 0.9rem; font-weight: 800; border-bottom: 1px solid #1c2b42; padding-bottom: 4px; margin-top: 12px; margin-bottom: 8px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -335,16 +332,16 @@ html_est += "</div></details>"
 st.markdown(html_est, unsafe_allow_html=True)
 
 # ==============================================================================
-# 🚜 BLOCO 5: FROTA (TURNOS ATUAIS AUTOMÁTICO)
+# 🚜 BLOCO 5: FROTA (LISTA OS 3 TURNOS DIRETAMENTE DENTRO DO BLOCO)
 # ==============================================================================
 df_frota = carregar_dados_nuvem("Rodizio_Frota")
-equip_em_uso = 0
-equip_standby = 0
-html_frota = ""
+html_frota = '<details class="master-box" style="border-left-color: #E67E22;">'
 
 if not df_frota.empty:
     col_turno = "TURNO_JANELA" if "TURNO_JANELA" in df_frota.columns else df_frota.columns[0]
     turnos = df_frota[col_turno].dropna().unique().tolist()
+    
+    # Descobre o turno atual para o título
     hora_atual = agora.hour
     idx_sug = next((i for i, t in enumerate(turnos) if ("00:00" in str(t) and 0 <= hora_atual < 8) or ("08:00" in str(t) and 8 <= hora_atual < 16) or ("16:00" in str(t) and 16 <= hora_atual <= 23)), 0)
     turno_atual_str = turnos[idx_sug] if turnos else ""
@@ -353,33 +350,86 @@ if not df_frota.empty:
     carr_op = df_f_atual[(df_f_atual["POSTO"].astype(str).str.contains("CARREG", case=False)) & (df_f_atual["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
     linha_op = df_f_atual[(df_f_atual["POSTO"].astype(str).str.contains("LINHA", case=False)) & (df_f_atual["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
     talhas_op = df_f_atual[(df_f_atual["POSTO"].astype(str).str.contains("TALHA", case=False) | df_f_atual["EQUIPAMENTO"].astype(str).str.contains("TALHA", case=False)) & (df_f_atual["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
-    paradas = df_f_atual[df_f_atual["STATUS_RODIZIO"].astype(str).str.contains("STAND", case=False)]["EQUIPAMENTO"].tolist()
+    
+    equip_em_uso_agora = len(carr_op) + len(linha_op) + len(talhas_op)
 
-    equip_em_uso = len(carr_op) + len(linha_op) + len(talhas_op)
-    equip_standby = len(paradas)
-
-    str_carr = " ".join([f'<span class="tag-box tag-op">{t}</span>' for t in carr_op]) if carr_op else "<span style='color:gray; font-size:0.85rem;'>Nenhum</span>"
-    str_linha = " ".join([f'<span class="tag-box tag-op">{t}</span>' for t in linha_op]) if linha_op else "<span style='color:gray; font-size:0.85rem;'>Nenhum</span>"
-    str_talha = " ".join([f'<span class="tag-box tag-talha">{t}</span>' for t in talhas_op]) if talhas_op else "<span style='color:gray; font-size:0.85rem;'>Nenhuma Talha operando</span>"
-    str_parada = " ".join([f'<span class="tag-box tag-standby">{t}</span>' for t in paradas]) if paradas else "<span style='color:gray; font-size:0.85rem;'>Nenhum</span>"
-
-    html_frota += '<details class="master-box" style="border-left-color: #E67E22;">'
     html_frota += '<summary>'
-    html_frota += f'<div class="master-metric-title">🚜 Equipamentos ({turno_atual_str})</div>'
-    html_frota += f'<div class="master-metric-val">{equip_em_uso} <span style="font-size:1.1rem; color:#94a3b8;">Em Operação</span></div>'
-    html_frota += f'<div class="master-metric-sub" style="color: #E67E22;">Stand-by / Parados: {equip_standby}</div>'
+    html_frota += '<div class="master-metric-title">🚜 Alocação de Equipamentos</div>'
+    html_frota += f'<div class="master-metric-val">{equip_em_uso_agora} <span style="font-size:1.1rem; color:#94a3b8;">Em Operação (Agora)</span></div>'
+    html_frota += '<div class="master-metric-sub" style="color: #E67E22;">Toque para ver a alocação dos 3 turnos</div>'
     html_frota += '</summary>'
     html_frota += '<div class="master-content">'
-    html_frota += '<div style="margin-bottom:8px; font-weight:800; font-size:0.85rem; color:#ffffff;">🟢 Empilhadeiras - Carregamento:</div>'
-    html_frota += f'<div style="margin-bottom:12px;">{str_carr}</div>'
-    html_frota += '<div style="margin-bottom:8px; font-weight:800; font-size:0.85rem; color:#ffffff;">🟢 Empilhadeiras - Linha:</div>'
-    html_frota += f'<div style="margin-bottom:12px;">{str_linha}</div>'
-    html_frota += '<div style="margin-bottom:8px; font-weight:800; font-size:0.85rem; color:#ffffff;">🏗️ Ponte Rolante / Talhas:</div>'
-    html_frota += f'<div style="margin-bottom:12px;">{str_talha}</div>'
-    html_frota += '<div style="margin-bottom:8px; font-weight:800; font-size:0.85rem; color:#ffffff;">🔴 Stand-by / Paradas:</div>'
-    html_frota += f'<div style="margin-bottom:4px;">{str_parada}</div>'
+
+    # Renderiza o detalhamento dos 3 turnos dentro do bloco
+    for t_str in turnos:
+        df_t = df_frota[df_frota[col_turno] == t_str]
+        carr = df_t[(df_t["POSTO"].astype(str).str.contains("CARREG", case=False)) & (df_t["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
+        linha = df_t[(df_t["POSTO"].astype(str).str.contains("LINHA", case=False)) & (df_t["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
+        talhas = df_t[(df_t["POSTO"].astype(str).str.contains("TALHA", case=False) | df_t["EQUIPAMENTO"].astype(str).str.contains("TALHA", case=False)) & (df_t["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
+        paradas = df_t[df_t["STATUS_RODIZIO"].astype(str).str.contains("STAND", case=False)]["EQUIPAMENTO"].tolist()
+
+        str_carr = " ".join([f"<span class='tag-box tag-op'>{t}</span>" for t in carr]) if carr else "<span style='color:gray; font-size:0.8rem;'>Nenhum</span>"
+        str_linha = " ".join([f"<span class='tag-box tag-op'>{t}</span>" for t in linha]) if linha else "<span style='color:gray; font-size:0.8rem;'>Nenhum</span>"
+        str_talha = " ".join([f"<span class='tag-box tag-talha'>{t}</span>" for t in talhas]) if talhas else "<span style='color:gray; font-size:0.8rem;'>Nenhuma operando</span>"
+        str_parada = " ".join([f"<span class='tag-box tag-standby'>{t}</span>" for t in paradas]) if paradas else "<span style='color:gray; font-size:0.8rem;'>Nenhum</span>"
+
+        html_frota += f'<div class="shift-header">🕒 Turno / Janela: {t_str}</div>'
+        html_frota += '<div style="margin-bottom:4px; font-size:0.8rem; color:#fff;">🟢 Carregamento:</div>'
+        html_frota += f'<div style="margin-bottom:10px;">{str_carr}</div>'
+        html_frota += '<div style="margin-bottom:4px; font-size:0.8rem; color:#fff;">🟢 Abastecimento de Linha:</div>'
+        html_frota += f'<div style="margin-bottom:10px;">{str_linha}</div>'
+        html_frota += '<div style="margin-bottom:4px; font-size:0.8rem; color:#fff;">🏗️ Pontes Rolantes / Talhas:</div>'
+        html_frota += f'<div style="margin-bottom:10px;">{str_talha}</div>'
+        html_frota += '<div style="margin-bottom:4px; font-size:0.8rem; color:#fff;">🔴 Stand-by / Paradas:</div>'
+        html_frota += f'<div style="margin-bottom:10px;">{str_parada}</div>'
+
     html_frota += '</div></details>'
+else:
+    html_frota += '<summary><div class="master-metric-title">🚜 Equipamentos</div></summary><div class="master-content"><div style="color:gray; font-size:0.85rem;">Planilha Rodizio_Frota indisponível.</div></div></details>'
+
+st.markdown(html_frota, unsafe_allow_html=True)
+
+# ==============================================================================
+# ⛽ BLOCO 6: CONSUMO DE GLP MENSAL (CLICÁVEL 100% NATIVO)
+# ==============================================================================
+df_glp = carregar_dados_nuvem("Abastecimentos_GLP", cabecalho=None)
+html_glp = '<details class="master-box" style="border-left-color: #fd7e14;">'
+
+if not df_glp.empty:
+    df_g = pd.DataFrame()
+    df_g["DATA_DT"] = pd.to_datetime(df_glp.iloc[:, 2].astype(str).str.strip(), format="%d/%m/%Y", errors="coerce")
+    df_g["MES_ANO"] = df_g["DATA_DT"].dt.strftime("%m/%Y")
+    df_g["MAQUINA"] = df_glp.iloc[:, 5].astype(str).str.strip()
+    df_g["KG_NUM"] = df_glp.iloc[:, 7].apply(safe_to_numeric)
     
-    st.markdown(html_frota, unsafe_allow_html=True)
+    meses_disp = df_g["MES_ANO"].dropna().unique().tolist()
+    if meses_disp:
+        meses_disp.sort(key=lambda x: datetime.strptime(x, "%m/%Y"))
+        mes_sel = meses_disp[-1]
+        df_mes = df_g[df_g["MES_ANO"] == mes_sel]
+        total_glp = df_mes["KG_NUM"].sum()
+        df_maq = df_mes.groupby("MAQUINA")["KG_NUM"].sum().reset_index().sort_values(by="KG_NUM", ascending=False)
+        
+        html_glp += '<summary>'
+        html_glp += f'<div class="master-metric-title">⛽ Consumo de GLP ({mes_sel})</div>'
+        html_glp += f'<div class="master-metric-val">{total_glp:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">kg</span></div>'
+        html_glp += '<div class="master-metric-sub" style="color: #fd7e14;">Toque para ver o consumo por máquina</div>'
+        html_glp += '</summary>'
+        html_glp += '<div class="master-content">'
+
+        max_glp = df_maq["KG_NUM"].max() if not df_maq.empty else 100
+        for _, row in df_maq.iterrows():
+            w_pct = min(100, (row["KG_NUM"] / max_glp) * 100)
+            html_glp += "<div class='bar-chart-row' style='margin-bottom:8px;'>"
+            html_glp += f"<div class='bar-chart-labels'><span style='font-size:0.75rem; color:#94a3b8;'>{row['MAQUINA']}</span><span style='font-size:0.85rem; color:#fff;'>{row['KG_NUM']:,.0f} kg</span></div>"
+            html_glp += f"<div class='bar-chart-bg' style='height:8px;'><div class='bar-chart-fill' style='width: {w_pct}%; background-color: #fd7e14;'></div></div>"
+            html_glp += "</div>"
+        html_glp += '</div></details>'
+    else:
+        html_glp += '<summary><div class="master-metric-title">⛽ Consumo de GLP</div></summary><div class="master-content"><div style="color:gray; font-size:0.85rem;">Sem dados de datas válidas.</div></div></details>'
+else:
+    html_glp += '<summary><div class="master-metric-title">⛽ Consumo de GLP</div></summary><div class="master-content"><div style="color:gray; font-size:0.85rem;">Planilha Abastecimentos_GLP indisponível.</div></div></details>'
+
+st.markdown(html_glp, unsafe_allow_html=True)
 
 st.markdown("<br><center><span style='color:#94a3b8; font-size: 0.75rem;'>Logística MI | A.L.O.V.E Core Mobile Dashboard</span></center>", unsafe_allow_html=True)
