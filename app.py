@@ -211,44 +211,44 @@ st.markdown(f"""
             <div class="metric-sub">Prev: {prev_prod:,.0f} t</div>
         </div>
     </div>
-    <div class="metric-card" style="border-bottom: 3px solid #E5B800;">
+    <div class="metric-card" style="border-bottom: 3px solid #E5B800; margin-bottom: 5px;">
         <div class="metric-title">📦 Estoque Total</div>
         <div class="metric-value">{estoque_total:,.0f} <span style="font-size:1rem;">t</span></div>
     </div>
 """, unsafe_allow_html=True)
 
 # -------------------------------------------------------------------------
-# 🔥 GRÁFICO DE TURNOS ESCALADOS
+# 🔥 GRÁFICO DE TURNOS (AGORA É CLICÁVEL / EXPANSÍVEL)
 # -------------------------------------------------------------------------
 if dados_turnos and "turnos" in dados_turnos:
-    st.markdown("<h5 style='color:#ffffff; margin-top:20px; margin-bottom:10px;'>⏳ Expedição por Turno</h5>", unsafe_allow_html=True)
-    
-    turnos_list = dados_turnos["turnos"]
-    ativo_key = dados_turnos.get("ativo_key")
-    
-    data_grafico = []
-    for t in turnos_list:
-        data_grafico.append({
-            "Turno": f"{t['letra']} ({t['horario'].split('-')[0].strip()})",
-            "Toneladas": t["vol"],
-            "Cor": "#FF9F1C" if t["key"] == ativo_key else "#3498DB"
-        })
+    # Cria a aba clicável (Expander)
+    with st.expander("👉 CLIQUE AQUI: DETALHAMENTO DE EXPEDIÇÃO POR TURNO"):
+        turnos_list = dados_turnos["turnos"]
+        ativo_key = dados_turnos.get("ativo_key")
         
-    df_vol = pd.DataFrame(data_grafico)
-    max_vol = max(df_vol["Toneladas"]) if not df_vol.empty and max(df_vol["Toneladas"]) > 0 else 100
-    
-    bars = alt.Chart(df_vol).mark_bar(cornerRadius=6).encode(
-        x=alt.X("Turno:N", sort=None, axis=alt.Axis(labelAngle=0, labelColor="#94a3b8", title=None)),
-        y=alt.Y("Toneladas:Q", scale=alt.Scale(domain=[0, max_vol * 1.3]), axis=None),
-        color=alt.Color("Cor:N", scale=None) 
-    )
-    
-    text = bars.mark_text(align='center', baseline='bottom', dy=-5, color='white', fontSize=14, fontWeight='bold').encode(
-        text=alt.Text('Toneladas:Q', format=',.0f')
-    )
-    
-    chart_vol = (bars + text).properties(height=220, background="transparent")
-    st.altair_chart(chart_vol, use_container_width=True)
+        data_grafico = []
+        for t in turnos_list:
+            data_grafico.append({
+                "Turno": f"{t['letra']} ({t['horario'].split('-')[0].strip()})",
+                "Toneladas": t["vol"],
+                "Cor": "#FF9F1C" if t["key"] == ativo_key else "#3498DB"
+            })
+            
+        df_vol = pd.DataFrame(data_grafico)
+        max_vol = max(df_vol["Toneladas"]) if not df_vol.empty and max(df_vol["Toneladas"]) > 0 else 100
+        
+        bars = alt.Chart(df_vol).mark_bar(cornerRadius=6).encode(
+            x=alt.X("Turno:N", sort=None, axis=alt.Axis(labelAngle=0, labelColor="#94a3b8", title=None)),
+            y=alt.Y("Toneladas:Q", scale=alt.Scale(domain=[0, max_vol * 1.3]), axis=None),
+            color=alt.Color("Cor:N", scale=None) 
+        )
+        
+        text = bars.mark_text(align='center', baseline='bottom', dy=-5, color='white', fontSize=14, fontWeight='bold').encode(
+            text=alt.Text('Toneladas:Q', format=',.0f')
+        )
+        
+        chart_vol = (bars + text).properties(height=220, background="transparent")
+        st.altair_chart(chart_vol, use_container_width=True)
 else:
     st.info("Aguardando o A.L.O.V.E Core calcular e enviar a escala de turnos.")
 
