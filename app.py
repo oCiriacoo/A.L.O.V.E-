@@ -286,11 +286,20 @@ prod_ms1 = safe_to_numeric(q_ms1.get("producao", q_ms1.get("prod", q_ms1.get("pe
 prod_ms2 = safe_to_numeric(q_ms2.get("producao", q_ms2.get("prod", q_ms2.get("peso", 0))))
 prod_hoje_calc = prod_ms1 + prod_ms2
 
-# Cálculos temporais e estimativas
+# Cálculos temporais e estimativas (AQUI ESTAVAM AS VARIÁVEIS QUE SUMIRAM!)
 agora = datetime.utcnow() - timedelta(hours=3)
 hoje_date = agora.date()
 ontem_date = hoje_date - timedelta(days=1)
-# ... (continue com as regras de horas produtivas como já está no seu código)
+
+horas_passadas_prod = max(0.1, agora.hour + (agora.minute / 60.0))
+prev_prod = (prod_hoje_calc / horas_passadas_prod) * 24
+
+horas_produtivas = sum((1.0 if h > agora.hour else (1.0 - (agora.minute / 60.0))) * (0.0 if 0 <= h < 8 and agora.weekday() in (0, 6) else (6.25 / 8.0)) for h in range(agora.hour, 24))
+cap_maxima_restante = horas_produtivas * 500.0
+
+total_veiculos_fisicos = sum(dados_patio.get(k, {}).get("veiculos", 0) for k in ["00", "01", "FC", "TR"]) if dados_patio else 0
+vol_patio_disponivel = sum(dados_patio.get(k, {}).get("peso", 0.0) for k in ["00", "01", "FC"]) if dados_patio else 0.0
+prev_carr = vol_hoje + min(cap_maxima_restante, vol_patio_disponivel)
 # ==============================================================================
 # CABEÇALHO SUPERIOR
 # ==============================================================================
