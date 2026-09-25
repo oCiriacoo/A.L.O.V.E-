@@ -344,13 +344,22 @@ html_patio += "</div></details>"
 st.markdown(html_patio, unsafe_allow_html=True)
 
 # ==============================================================================
-# 🏭 BLOCO 2: PRODUÇÃO DO DIA (HTML PURO BLINDADO COM L1, L2, ALVURA E PH)
+# 🏭 BLOCO 2: PRODUÇÃO DO DIA (COM L1, L2, ALVURA E PH)
 # ==============================================================================
+# 1. Garante que as variáveis existem lendo direto do dicionário de qualidade
+q_ms1 = qualidade.get("MS1", qualidade.get("ms1", {}))
+q_ms2 = qualidade.get("MS2", qualidade.get("ms2", {}))
+
+prod_ms1 = safe_to_numeric(q_ms1.get("producao", q_ms1.get("prod", q_ms1.get("peso", 0))))
+prod_ms2 = safe_to_numeric(q_ms2.get("producao", q_ms2.get("prod", q_ms2.get("peso", 0))))
+prod_hoje_calc = prod_ms1 + prod_ms2
+
+# 2. Monta o HTML interno das máquinas
 html_prod_content = ""
 
 for maq, q_dados, p_maq in [("MS1", q_ms1, prod_ms1), ("MS2", q_ms2, prod_ms2)]:
     if q_dados:
-        # Extração de Qualidade e Produção
+        # Extração de Qualidade
         mat_maq = q_dados.get("material", q_dados.get("mat", "--"))
         q_suj = safe_to_numeric(q_dados.get('sujidade', 0.0))
         q_visc = safe_to_numeric(q_dados.get('viscosidade', 0.0))
@@ -358,6 +367,7 @@ for maq, q_dados, p_maq in [("MS1", q_ms1, prod_ms1), ("MS2", q_ms2, prod_ms2)]:
         q_alvura = safe_to_numeric(q_dados.get('alvura', 0.0))
         q_ph = safe_to_numeric(q_dados.get('ph', 0.0))
         
+        # Extração das Linhas (L1 e L2)
         l1 = safe_to_numeric(q_dados.get('l1', 0.0))
         l2 = safe_to_numeric(q_dados.get('l2', 0.0))
         
@@ -365,7 +375,7 @@ for maq, q_dados, p_maq in [("MS1", q_ms1, prod_ms1), ("MS2", q_ms2, prod_ms2)]:
         c_suj = "#00D672" if q_suj <= 2.5 else "#E74C3C"
         c_vis = "#00D672" if q_visc >= 650 else "#E74C3C"
         c_teo = "#00D672" if q_teor >= 88.5 else "#E74C3C"
-        c_alv = "#38bdf8" # Azul para diferenciar os novos indicadores
+        c_alv = "#38bdf8"
         c_ph = "#38bdf8"
 
         html_prod_content += f"""
@@ -376,13 +386,11 @@ for maq, q_dados, p_maq in [("MS1", q_ms1, prod_ms1), ("MS2", q_ms2, prod_ms2)]:
                 <span style='color:#3498DB; font-weight:900; font-size:1.1rem;'>{p_maq:,.0f} t</span>
             </div>
             
-            <!-- Quebra por Linha L1 / L2 -->
             <div style='display:flex; justify-content:flex-end; gap: 12px; margin-bottom: 10px; font-size: 0.75rem; color: #94a3b8; font-weight: 700;'>
                 <span>L1: <span style='color:#ffffff;'>{l1:,.0f} t</span></span>
                 <span>L2: <span style='color:#ffffff;'>{l2:,.0f} t</span></span>
             </div>
             
-            <!-- Grid de Qualidade (5 Colunas) -->
             <div style='display: flex; justify-content: space-between; text-align: center; border-top: 1px dashed #1c2b42; padding-top: 10px;'>
                 <div>
                     <div style='font-size:0.65rem; color:#94a3b8; text-transform:uppercase;'>Sujidade</div>
@@ -410,11 +418,12 @@ for maq, q_dados, p_maq in [("MS1", q_ms1, prod_ms1), ("MS2", q_ms2, prod_ms2)]:
     else:
         html_prod_content += f"<div style='color:gray; padding:10px 0;'>Aguardando dados da {maq}...</div>"
 
+# 3. Monta a caixa principal
 html_prod_completo = f"""
 <details class="master-box" style="border-left-color: #E5B800;">
     <summary>
         <div class="master-metric-title">🏭 Produção de Celulose</div>
-        <div class="master-metric-val">{prod_hoje:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div>
+        <div class="master-metric-val">{prod_hoje_calc:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div>
         <div class="master-metric-sub" style="color: #94a3b8;">MS1: {prod_ms1:,.0f} t | MS2: {prod_ms2:,.0f} t</div>
     </summary>
     <div class="master-content">
@@ -423,7 +432,6 @@ html_prod_completo = f"""
 </details>
 """
 
-# Limpeza de quebras de linha para o Streamlit
 st.markdown(html_prod_completo.replace('\n', ''), unsafe_allow_html=True)
 
 # ==============================================================================
