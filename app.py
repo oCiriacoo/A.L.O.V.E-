@@ -613,7 +613,7 @@ html_exp_completo = f"""
 st.markdown(html_exp_completo.replace('\n', ''), unsafe_allow_html=True)
 
 # ==============================================================================
-# 📦 BLOCO 4: ESTOQUE TOTAL E MATERIAIS
+# 📦 BLOCO 4: ESTOQUE TOTAL E MATERIAIS (COM COR DIFERENTE PARA SQ)
 # ==============================================================================
 html_est = '<details class="master-box" style="border-left-color: #9b59b6;">'
 html_est += f'<summary><div class="master-metric-title">📦 Estoque Físico no Armazém</div><div class="master-metric-val">{estoque_total:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div><div class="master-metric-sub" style="color: #9b59b6;">Status Transbordo: {status_transbordo}</div></summary>'
@@ -624,11 +624,21 @@ if dados_segregados:
     chart_data_est = []
     for _, row in df_seg.iterrows():
         t_par = forcar_par(row["Toneladas"])
+        mat_nome = str(row["Material"]).upper()
+        
+        # 🎨 Regra de cores customizada para os materiais
+        if "SQ" in mat_nome:
+            cor_barra = "#FF7700"  # Laranja Neon vibrante para SQ
+        elif "EQ" in mat_nome:
+            cor_barra = "#00D672"  # Verde para EQ
+        else:
+            cor_barra = "#38bdf8"  # Azul padrão para os demais
+            
         chart_data_est.append({
             "label": row["Material"],
             "value": t_par,
             "text": f"{t_par:,.0f} t",
-            "color": "#38bdf8"
+            "color": cor_barra
         })
     html_est += build_vertical_chart(chart_data_est)
 else:
