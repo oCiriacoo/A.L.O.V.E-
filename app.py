@@ -369,111 +369,76 @@ html_prod += "</div></details>"
 st.markdown(html_prod, unsafe_allow_html=True)
 
 # ==============================================================================
-# 🚚 BLOCO 3: EXPEDIÇÃO DO DIA & TURNOS (HTML NATIVO COM BOTÃO D-1 DENTRO)
+# 🚚 BLOCO 3: EXPEDIÇÃO DO DIA & TURNOS (CORRIGIDO SEM BUG DE TEXTO CRU)
 # ==============================================================================
-# Puxa os dados de Hoje e de Ontem para deixar prontos na tela
 dados_exp_hoje = buscar_dados_turnos_historico(hoje_date)
 dados_exp_ontem = buscar_dados_turnos_historico(ontem_date)
 
 vol_exp_hoje = vol_hoje if vol_hoje > 0 else (dados_exp_hoje.get("total_dia", 0.0) if dados_exp_hoje else 0.0)
 vol_exp_ontem = dados_exp_ontem.get("total_dia", 0.0) if dados_exp_ontem else 0.0
 
-# 1. Monta os cards e gráficos de HOJE
-cards_hoje = ""
-chart_data_hoje = []
-if dados_exp_hoje and "turnos" in dados_exp_hoje:
-    ativo_key = dados_exp_hoje.get("ativo_key")
-    cards_hoje += '<div style="display:flex; gap:6px; margin-bottom:8px;">'
-    for t in dados_exp_hoje["turnos"]:
+# 1. Renderiza o cabeçalho no estilo master-box nativo
+html_exp_topo = (
+    '<details class="master-box" style="border-left-color: #00D672;" open>'
+    '<summary>'
+    '<div class="master-metric-title">🚛 Expedição Realizada</div>'
+    f'<div class="master-metric-val">{vol_exp_hoje:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div>'
+    f'<div class="master-metric-sub" style="color: #00D672;">Consolidado Ontem (D-1): {vol_exp_ontem:,.0f} t</div>'
+    '</summary>'
+    '<div class="master-content">'
+)
+st.markdown(html_exp_topo, unsafe_allow_html=True)
+
+# 2. Seletor de visualização (Hoje / D-1) direto dentro do bloco
+col_spc1, col_sel, col_spc2 = st.columns([1, 2, 1])
+with col_sel:
+    periodo_sel = st.segmented_control(
+        "Período de Expedição",
+        ["Hoje", "Ontem (D-1)"],
+        default="Hoje",
+        label_visibility="collapsed"
+    )
+
+# 3. Define qual dataset exibir
+dados_ativos = dados_exp_hoje if periodo_sel == "Hoje" else dados_exp_ontem
+sub_tit = "Turnos em Operação Hoje:" if periodo_sel == "Hoje" else f"Fechamento de Ontem ({ontem_date.strftime('%d/%m')}):"
+cor_tema = "#00D672" if periodo_sel == "Hoje" else "#38bdf8"
+
+st.markdown(f"<div style='font-size:0.75rem; font-weight:800; color:{cor_tema}; text-transform:uppercase; margin: 8px 0 6px 0;'>{sub_tit}</div>", unsafe_allow_html=True)
+
+if dados_ativos and "turnos" in dados_ativos:
+    ativo_key = dados_ativos.get("ativo_key")
+    cards_html = "<div style='display:flex; gap:6px; margin-bottom:8px;'>"
+    chart_data = []
+
+    for t in dados_ativos["turnos"]:
         is_atv = (t["key"] == ativo_key)
         cor_b = "#FF9F1C" if is_atv else "#1c2b42"
         cor_txt = "#FF9F1C" if is_atv else "#ffffff"
         sub_txt = f"{t['horario']} (ATIVO)" if is_atv else t['horario']
-        cards_hoje += f"<div style='flex:1; background-color:#111c2e; border:1.5px solid {cor_b}; border-radius:8px; padding:8px; text-align:center;'><div style='font-size:0.75rem; font-weight:800; color:{cor_txt};'>{t['letra']}</div><div style='font-size:1.1rem; font-weight:900; color:#ffffff;'>{t['vol']:,.0f} t</div><div style='font-size:0.65rem; color:#94a3b8;'>{sub_txt}</div></div>"
-        chart_data_hoje.append({"label": t['letra'], "value": t['vol'], "text": f"{t['vol']:,.0f} t", "color": "#FF9F1C" if is_atv else "#00D672"})
-    cards_hoje += '</div>'
-    cards_hoje += build_vertical_chart(chart_data_hoje)
+        
+        cards_html += (
+            f"<div style='flex:1; background-color:#111c2e; border:1.5px solid {cor_b}; border-radius:8px; padding:8px; text-align:center;'>"
+            f"<div style='font-size:0.75rem; font-weight:800; color:{cor_txt};'>{t['letra']}</div>"
+            f"<div style='font-size:1.1rem; font-weight:900; color:#ffffff;'>{t['vol']:,.0f} t</div>"
+            f"<div style='font-size:0.65rem; color:#94a3b8;'>{sub_txt}</div>"
+            f"</div>"
+        )
+        chart_data.append({
+            "label": t['letra'],
+            "value": t['vol'],
+            "text": f"{t['vol']:,.0f} t",
+            "color": "#FF9F1C" if is_atv else cor_tema
+        })
+
+    cards_html += "</div>"
+    st.markdown(cards_html, unsafe_allow_html=True)
+    st.markdown(build_vertical_chart(chart_data), unsafe_allow_html=True)
 else:
-    cards_hoje = '<div style="color:gray;">Aguardando dados de hoje...</div>'
+    st.markdown("<div style='color:gray; padding: 10px 0;'>Sem dados de expedição disponíveis para o período.</div>", unsafe_allow_html=True)
 
-# 2. Monta os cards e gráficos de ONTEM (D-1)
-cards_ontem = ""
-chart_data_ontem = []
-if dados_exp_ontem and "turnos" in dados_exp_ontem:
-    cards_ontem += '<div style="display:flex; gap:6px; margin-bottom:8px;">'
-    for t in dados_exp_ontem["turnos"]:
-        cards_ontem += f"<div style='flex:1; background-color:#111c2e; border:1.5px solid #1c2b42; border-radius:8px; padding:8px; text-align:center;'><div style='font-size:0.75rem; font-weight:800; color:#38bdf8;'>{t['letra']}</div><div style='font-size:1.1rem; font-weight:900; color:#ffffff;'>{t['vol']:,.0f} t</div><div style='font-size:0.65rem; color:#94a3b8;'>{t['horario']}</div></div>"
-        chart_data_ontem.append({"label": t['letra'], "value": t['vol'], "text": f"{t['vol']:,.0f} t", "color": "#38bdf8"})
-    cards_ontem += '</div>'
-    cards_ontem += build_vertical_chart(chart_data_ontem)
-else:
-    cards_ontem = '<div style="color:gray;">Sem dados consolidados de ontem.</div>'
-
-# 3. HTML Completo com o Bloco Verde e Botões Internos
-html_exp = f'''
-<details class="master-box" style="border-left-color: #00D672;" open>
-    <summary>
-        <div class="master-metric-title">🚛 Expedição Realizada</div>
-        <div class="master-metric-val">{vol_exp_hoje:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div>
-        <div class="master-metric-sub" style="color: #00D672;">Consolidado Ontem (D-1): {vol_exp_ontem:,.0f} t</div>
-    </summary>
-    <div class="master-content">
-        <!-- SELETOR DENTRO DO BLOCO -->
-        <div style="display:flex; justify-content:center; gap:8px; margin-bottom:14px;">
-            <input type="radio" name="view_exp" id="exp_hoje" checked>
-            <label for="exp_hoje" class="btn-periodo">📅 Hoje</label>
-            
-            <input type="radio" name="view_exp" id="exp_ontem">
-            <label for="exp_ontem" class="btn-periodo">⏮️ Ontem (D-1)</label>
-        </div>
-
-        <!-- CONTEÚDO HOJE -->
-        <div id="box_exp_hoje">
-            <div style="font-size:0.75rem; font-weight:800; color:#00D672; text-transform:uppercase; margin-bottom:6px;">Turnos em Operação Hoje:</div>
-            {cards_hoje}
-        </div>
-
-        <!-- CONTEÚDO ONTEM (D-1) -->
-        <div id="box_exp_ontem">
-            <div style="font-size:0.75rem; font-weight:800; color:#38bdf8; text-transform:uppercase; margin-bottom:6px;">Fechamento de Ontem ({ontem_date.strftime('%d/%m')}):</div>
-            {cards_ontem}
-        </div>
-    </div>
-</details>
-
-<style>
-    /* Estilo dos Botões Dentro do Bloco */
-    .btn-periodo {{
-        display: inline-block;
-        padding: 6px 16px;
-        background-color: #162438;
-        color: #94a3b8;
-        border: 1px solid #1c2b42;
-        border-radius: 6px;
-        font-size: 0.8rem;
-        font-weight: 800;
-        cursor: pointer;
-        transition: 0.2s;
-    }}
-    #exp_hoje:checked + label {{
-        background-color: #00D672;
-        color: #0a101d;
-        border-color: #00D672;
-    }}
-    #exp_ontem:checked + label {{
-        background-color: #38bdf8;
-        color: #0a101d;
-        border-color: #38bdf8;
-    }}
-    
-    /* Alternância de Visibilidade */
-    #box_exp_hoje, #box_exp_ontem {{ display: none; }}
-    #exp_hoje:checked ~ #box_exp_hoje {{ display: block; }}
-    #exp_ontem:checked ~ #box_exp_ontem {{ display: block; }}
-</style>
-'''
-
-st.markdown(html_exp, unsafe_allow_html=True)
+# 4. Fecha as tags do card
+st.markdown("</div></details>", unsafe_allow_html=True)
 
 # ==============================================================================
 # 📦 BLOCO 4: ESTOQUE TOTAL E MATERIAIS
