@@ -135,7 +135,6 @@ st.markdown("""
 SHEET_ID = "10FluiIwlynIlPDA74QI8mpHSIrAc-62H1hZNRBsvfCA"
 
 def forcar_par(valor):
-    """Garante que qualquer tonelagem exibida seja sempre um número par."""
     val_int = int(round(float(valor or 0)))
     if val_int % 2 != 0:
         val_int += 1
@@ -392,10 +391,10 @@ if not df_alertas.empty:
 hoje_dt = date.today()
 fim_ano = date(hoje_dt.year, 12, 31)
 dias_restantes = max(1, (fim_ano - hoje_dt).days)
-meta_teto_estoque = 3468.0[cite: 1]
+meta_teto_estoque = 3468.0
 
-carr_base_ano = 1356346.0[cite: 1]
-prod_base_ano = 1358998.0[cite: 1]
+carr_base_ano = 1356346.0
+prod_base_ano = 1358998.0
 ritmo_esperado_dia = 5200.0
 
 carr_ano_atual = forcar_par(carr_base_ano + vol_hoje)
