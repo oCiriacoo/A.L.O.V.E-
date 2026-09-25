@@ -6,6 +6,7 @@ import json
 import requests
 import csv
 from io import StringIO
+import ast
 
 st.set_page_config(
     page_title="A.L.O.V.E. Mobile",
@@ -136,12 +137,6 @@ st.markdown("""
         .tag-op { background-color: #00D672; color: #0a101d; }
         .tag-standby { background-color: #E74C3C; color: #ffffff; }
         .tag-talha { background-color: #F39C12; color: #0a101d; }
-
-        /* TABS CSS (Centralizadas) */
-        .css-tabs label { display: inline-block; padding: 8px 12px; background-color: #1c2b42; color: #94a3b8; border-radius: 6px; font-size: 0.8rem; font-weight: 800; margin: 4px; cursor: pointer; transition: 0.2s; }
-        .css-tabs input[type="radio"]:checked + label { background-color: #3498DB; color: #fff; }
-        .tab-content { display: none; animation: fadeIn 0.3s ease; text-align: center; }
-        #ftab0:checked ~ #fcontent0, #ftab1:checked ~ #fcontent1, #ftab2:checked ~ #fcontent2 { display: block; }
         
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
@@ -265,11 +260,10 @@ def parse_robusto(texto):
     texto_str = str(texto).strip()
     try: return json.loads(texto_str)
     except:
-        import ast
         try: return ast.literal_eval(texto_str)
         except: return {}
 
-# 1. Puxa os dados gerais fixos (AS VARIÁVEIS QUE FUGIRAM ESTÃO AQUI!)
+# 1. Puxa os dados gerais fixos
 dados_patio = parse_robusto(cache_dict.get("dados_patio", "{}"))
 dados_segregados = parse_robusto(cache_dict.get("dados_segregados", "{}"))
 
@@ -278,7 +272,7 @@ estoque_total = safe_to_numeric(cache_dict.get("estoque_total", 0))
 ultima_att = cache_dict.get("ultima_atualizacao", "Desconhecida")
 observacoes = cache_dict.get("observacoes", "")
 
-# 2. 🧠 LÓGICA CUMULATIVA PARA A QUALIDADE E PRODUÇÃO (FOGE DO RESET DO SAP)
+# 2. 🧠 LÓGICA CUMULATIVA PARA A QUALIDADE E PRODUÇÃO
 agora = datetime.utcnow() - timedelta(hours=3)
 hoje_date = agora.date()
 ontem_date = hoje_date - timedelta(days=1)
@@ -294,7 +288,6 @@ for _, row in df_cache.iterrows():
     chave_str = str(row.iloc[0]).strip()
     valor_str = str(row.iloc[1]).strip()
     
-    # Se a linha contém os dados das máquinas, processa para acumular
     if "MS1" in valor_str and "producao" in valor_str:
         try: dt_row = datetime.strptime(chave_str[:10], "%d/%m/%Y").date()
         except: dt_row = hoje_date
@@ -310,18 +303,17 @@ for _, row in df_cache.iterrows():
                     cur_l1 = safe_to_numeric(maq_data.get("l1", 0.0))
                     cur_l2 = safe_to_numeric(maq_data.get("l2", 0.0))
                     
-                    # 🚨 DETECTOR DE RESET (Queda maior que 20 tons significa que a máquina virou o lote)
+                    # 🚨 DETECTOR DE RESET: Soma na gaveta acumulada se caiu mais de 20t
                     if cur_prod < acumuladores[maq]["last_prod"] and (acumuladores[maq]["last_prod"] - cur_prod) > 20:
                         acumuladores[maq]["acumulado_prod"] += acumuladores[maq]["last_prod"]
                         acumuladores[maq]["acumulado_l1"] += acumuladores[maq]["last_l1"]
                         acumuladores[maq]["acumulado_l2"] += acumuladores[maq]["last_l2"]
                     
-                    # Atualiza a memória com o valor lido agora
                     acumuladores[maq]["last_prod"] = cur_prod
                     acumuladores[maq]["last_l1"] = cur_l1
                     acumuladores[maq]["last_l2"] = cur_l2
 
-# 3. Consolidação Final
+# 3. Consolidação Final das Máquinas
 q_ms1 = qualidade_sintetizada.get("MS1", {})
 q_ms2 = qualidade_sintetizada.get("MS2", {})
 
@@ -346,9 +338,6 @@ total_veiculos_fisicos = sum(dados_patio.get(k, {}).get("veiculos", 0) for k in 
 vol_patio_disponivel = sum(dados_patio.get(k, {}).get("peso", 0.0) for k in ["00", "01", "FC"]) if dados_patio else 0.0
 prev_carr = vol_hoje + min(cap_maxima_restante, vol_patio_disponivel)
 
-# ==============================================================================
-# CABEÇALHO SUPERIOR
-# ==============================================================================
 # ==============================================================================
 # CABEÇALHO SUPERIOR
 # ==============================================================================
@@ -407,15 +396,6 @@ st.markdown(html_patio, unsafe_allow_html=True)
 # ==============================================================================
 # 🏭 BLOCO 2: PRODUÇÃO DO DIA (COM L1, L2, ALVURA E PH)
 # ==============================================================================
-# 1. Garante que as variáveis existem lendo direto do dicionário de qualidade
-q_ms1 = qualidade.get("MS1", qualidade.get("ms1", {}))
-q_ms2 = qualidade.get("MS2", qualidade.get("ms2", {}))
-
-prod_ms1 = safe_to_numeric(q_ms1.get("producao", q_ms1.get("prod", q_ms1.get("peso", 0))))
-prod_ms2 = safe_to_numeric(q_ms2.get("producao", q_ms2.get("prod", q_ms2.get("peso", 0))))
-prod_hoje_calc = prod_ms1 + prod_ms2
-
-# 2. Monta o HTML interno das máquinas
 html_prod_content = ""
 
 for maq, q_dados, p_maq in [("MS1", q_ms1, prod_ms1), ("MS2", q_ms2, prod_ms2)]:
@@ -428,11 +408,10 @@ for maq, q_dados, p_maq in [("MS1", q_ms1, prod_ms1), ("MS2", q_ms2, prod_ms2)]:
         q_alvura = safe_to_numeric(q_dados.get('alvura', 0.0))
         q_ph = safe_to_numeric(q_dados.get('ph', 0.0))
         
-        # Extração das Linhas (L1 e L2)
+        # Extração das Linhas acumuladas
         l1 = safe_to_numeric(q_dados.get('l1', 0.0))
         l2 = safe_to_numeric(q_dados.get('l2', 0.0))
         
-        # Lógica de Cores da Qualidade
         c_suj = "#00D672" if q_suj <= 2.5 else "#E74C3C"
         c_vis = "#00D672" if q_visc >= 650 else "#E74C3C"
         c_teo = "#00D672" if q_teor >= 88.5 else "#E74C3C"
@@ -479,7 +458,6 @@ for maq, q_dados, p_maq in [("MS1", q_ms1, prod_ms1), ("MS2", q_ms2, prod_ms2)]:
     else:
         html_prod_content += f"<div style='color:gray; padding:10px 0;'>Aguardando dados da {maq}...</div>"
 
-# 3. Monta a caixa principal
 html_prod_completo = f"""
 <details class="master-box" style="border-left-color: #E5B800;">
     <summary>
@@ -492,11 +470,10 @@ html_prod_completo = f"""
     </div>
 </details>
 """
-
 st.markdown(html_prod_completo.replace('\n', ''), unsafe_allow_html=True)
 
 # ==============================================================================
-# 🚚 BLOCO 3: EXPEDIÇÃO DO DIA & TURNOS (HTML PURO BLINDADO)
+# 🚚 BLOCO 3: EXPEDIÇÃO DO DIA & TURNOS
 # ==============================================================================
 dados_exp_hoje = buscar_dados_turnos_historico(hoje_date)
 dados_exp_ontem = buscar_dados_turnos_historico(ontem_date)
@@ -504,7 +481,6 @@ dados_exp_ontem = buscar_dados_turnos_historico(ontem_date)
 vol_exp_hoje = vol_hoje if vol_hoje > 0 else (dados_exp_hoje.get("total_dia", 0.0) if dados_exp_hoje else 0.0)
 vol_exp_ontem = dados_exp_ontem.get("total_dia", 0.0) if dados_exp_ontem else 0.0
 
-# --- CONTEÚDO HOJE ---
 html_hoje = "<div style='font-size:0.75rem; font-weight:800; color:#00D672; text-transform:uppercase; margin-bottom:10px; text-align:left;'>Turnos em Operação Hoje:</div>"
 if dados_exp_hoje and "turnos" in dados_exp_hoje:
     ativo_key = dados_exp_hoje.get("ativo_key")
@@ -523,7 +499,6 @@ if dados_exp_hoje and "turnos" in dados_exp_hoje:
 else:
     html_hoje += "<div style='color:gray; text-align:left;'>Aguardando dados de hoje...</div>"
 
-# --- CONTEÚDO ONTEM (D-1) ---
 html_ontem = f"<div style='font-size:0.75rem; font-weight:800; color:#38bdf8; text-transform:uppercase; margin-bottom:10px; text-align:left;'>Fechamento de Ontem ({ontem_date.strftime('%d/%m')}):</div>"
 if dados_exp_ontem and "turnos" in dados_exp_ontem:
     html_ontem += "<div style='display:flex; gap:6px; margin-bottom:8px;'>"
@@ -536,7 +511,6 @@ if dados_exp_ontem and "turnos" in dados_exp_ontem:
 else:
     html_ontem += "<div style='color:gray; text-align:left;'>Sem dados consolidados de ontem.</div>"
 
-# --- MONTAGEM HTML/CSS FINAL ---
 html_exp_completo = f"""
 <details class="master-box" style="border-left-color: #00D672;" open>
     <summary>
@@ -579,11 +553,7 @@ html_exp_completo = f"""
     #tab_hoje:checked ~ #content_hoje {{ display: block; }}
 </style>
 """
-
-# Limpeza de quebras de linha para o Streamlit não transformar em bloco de código Markdown
-html_exp_completo = html_exp_completo.replace('\n', '')
-
-st.markdown(html_exp_completo, unsafe_allow_html=True)
+st.markdown(html_exp_completo.replace('\n', ''), unsafe_allow_html=True)
 
 # ==============================================================================
 # 📦 BLOCO 4: ESTOQUE TOTAL E MATERIAIS
