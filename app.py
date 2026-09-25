@@ -112,9 +112,11 @@ st.markdown("""
         }
         details.master-box[open] summary::after { transform: translateY(-50%) rotate(180deg); color: #38bdf8; }
         
-        .master-metric-title { color: #94a3b8; font-size: 0.85rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; padding-right: 20px;}
-        .master-metric-val { color: #ffffff; font-size: 2rem; font-weight: 900; line-height: 1.1; margin-bottom: 4px; }
-        .master-metric-sub { font-size: 0.85rem; font-weight: 700; }
+        /* 🔥 FONTES E ÍCONES AUMENTADOS AQUI: */
+        .master-metric-title { color: #94a3b8; font-size: 1.1rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; padding-right: 20px;}
+        .master-metric-val { color: #ffffff; font-size: 2.4rem; font-weight: 900; line-height: 1.1; margin-bottom: 6px; }
+        .master-metric-sub { font-size: 0.95rem; font-weight: 700; }
+        
         .master-content { background-color: #0a101d; padding: 16px; border-top: 1px dashed #1c2b42; }
 
         .patio-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
