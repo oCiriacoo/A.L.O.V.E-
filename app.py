@@ -342,8 +342,18 @@ q_ms2["producao"] = prod_ms2
 
 prod_hoje_calc = prod_ms1 + prod_ms2
 
-# Cálculos temporais e estimativas
-horas_passadas_prod = max(0.1, agora.hour + (agora.minute / 60.0))
+# ==============================================================================
+# 🧠 CÁLCULOS TEMPORAIS E ESTIMATIVAS (BLINDADO CONTRA O BUG DA MEIA-NOITE)
+# ==============================================================================
+# Extrai a hora exata em que o dado foi salvo no banco, para a matemática não distorcer
+try:
+    dt_cache = datetime.strptime(ultima_att, "%d/%m/%Y %H:%M:%S")
+    hora_base = dt_cache.hour + (dt_cache.minute / 60.0)
+except:
+    hora_base = agora.hour + (agora.minute / 60.0)
+
+# Trava de segurança: nunca divide por menos de 1 hora para não explodir a projeção
+horas_passadas_prod = max(1.0, hora_base)
 prev_prod = (prod_hoje_calc / horas_passadas_prod) * 24
 
 horas_produtivas = sum((1.0 if h > agora.hour else (1.0 - (agora.minute / 60.0))) * (0.0 if 0 <= h < 8 and agora.weekday() in (0, 6) else (6.25 / 8.0)) for h in range(agora.hour, 24))
