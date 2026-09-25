@@ -400,6 +400,11 @@ ritmo_esperado_dia = 5200.0
 carr_ano_atual = forcar_par(carr_base_ano + vol_hoje)
 prod_ano_atual = forcar_par(prod_base_ano + prod_hoje_calc)
 
+# Variação real entre o que foi produzido e expedido
+var_prod_carr = forcar_par(prod_ano_atual - carr_ano_atual)
+sinal_var = f"+{var_prod_carr:,.0f}" if var_prod_carr > 0 else f"{var_prod_carr:,.0f}"
+cor_var = "#00D672" if var_prod_carr >= 0 else "#FF9F1C"
+
 excesso_estoque = max(0.0, estoque_total - meta_teto_estoque)
 ritmo_extra_dia = excesso_estoque / dias_restantes
 meta_diaria_carr = forcar_par(ritmo_esperado_dia + ritmo_extra_dia)
@@ -408,15 +413,14 @@ proj_prod_fechamento = forcar_par(prod_ano_atual + (dias_restantes * ritmo_esper
 carr_futuro_nec = (estoque_total + (dias_restantes * ritmo_esperado_dia)) - meta_teto_estoque
 proj_carr_fechamento = forcar_par(carr_ano_atual + carr_futuro_nec)
 
-cor_meta = "#00D672" if excesso_estoque <= 0 else ("#FF9F1C" if excesso_estoque <= 1000 else "#E74C3C")
-status_ritmo_meta = "DENTRO DA META" if excesso_estoque <= 0 else ("ATENÇÃO" if excesso_estoque <= 1000 else "FORA DA META")
-
 html_meta_anual = f"""
-<details class="master-box" style="border-left-color: {cor_meta};">
+<details class="master-box" style="border-left-color: #38bdf8;">
     <summary>
-        <div class="master-metric-title">📊 COMPARATIVO PRODUÇÃO vs EXPEDIÇÃO ({dias_restantes} dias até 31/12)</div>
+        <div class="master-metric-title">📊 COMPARATIVO PRODUÇÃO vs EXPEDIÇÃO ({dias_restantes} DIAS ATÉ 31/12)</div>
         <div class="master-metric-val">{carr_ano_atual:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">t Expedidas</span></div>
-        <div class="master-metric-sub" style="color: {cor_meta};">Meta Diária: {meta_diaria_carr:,.0f} t/dia • Status: {status_ritmo_meta}</div>
+        <div class="master-metric-sub" style="color: {cor_var};">
+            Variação Produção vs Expedição: {sinal_var} t
+        </div>
     </summary>
     <div class="master-content">
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
@@ -432,8 +436,8 @@ html_meta_anual = f"""
             </div>
         </div>
         <div style="background-color:#111c2e; border:1px solid #1c2b42; border-radius:8px; padding:10px; font-size:0.8rem; color:#94a3b8; display:flex; justify-content:space-between; align-items:center;">
-            <span>Estoque Pátio vs Meta 31/12:</span>
-            <b style="color:#ffffff;">{estoque_total:,.0f} t / 3.468 t</b>
+            <span>Estoque de Virada 25/26: <b>3.468 t</b></span>
+            <b style="color:#ffffff;">Pátio Atual: {forcar_par(estoque_total):,.0f} t</b>
         </div>
     </div>
 </details>
