@@ -388,7 +388,7 @@ if not df_alertas.empty:
         """, unsafe_allow_html=True)
 
 # ==============================================================================
-# 🎯 BLOCO 0: COMPARATIVO PRODUÇÃO vs EXPEDIÇÃO (SOMA CORRETA DA BASE)
+# 🎯 BLOCO 0: COMPARATIVO PRODUÇÃO vs EXPEDIÇÃO
 # ==============================================================================
 hoje_dt = date.today()
 fim_ano = date(hoje_dt.year, 12, 31)
@@ -400,7 +400,7 @@ carr_base_ano = 1362558.0
 prod_base_ano = 1362676.0 
 ritmo_esperado_dia = 5200.0
 
-# 🔥 AQUI ESTÁ A CORREÇÃO: SOMANDO O VOLUME DE HOJE À BASE ACUMULADA ATE ONTEM
+# SOMANDO O VOLUME DE HOJE À BASE ACUMULADA ATE ONTEM
 carr_ano_atual = forcar_par(carr_base_ano + vol_hoje)
 prod_ano_atual = forcar_par(prod_base_ano + prod_hoje_calc)
 
@@ -422,19 +422,20 @@ proj_prod_fechamento = forcar_par(prod_ano_atual + (dias_restantes * ritmo_esper
 carr_futuro_nec = (estoque_total + (dias_restantes * ritmo_esperado_dia)) - meta_teto_estoque
 proj_carr_fechamento = forcar_par(carr_ano_atual + carr_futuro_nec)
 
+# 🔥 COR DA BORDA ALTERADA PARA AZUL FORTE (#007BFF) AQUI
 html_meta_anual = f"""
-<details class="master-box" style="border-left-color: #38bdf8;" open>
+<details class="master-box" style="border-left-color: #007BFF;" open>
     <summary>
         <div class="master-metric-title">📊 COMPARATIVO PRODUÇÃO vs EXPEDIÇÃO ({dias_restantes} DIAS ATÉ 31/12)</div>
-        <div class="master-metric-val">{carr_ano_atual:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">t Expedidas</span></div>
-        <div class="master-metric-sub" style="color: #38bdf8;">Meta Diária Necessária: {meta_diaria_carr:,.0f} t/dia</div>
+        <div class="master-metric-val">{carr_ano_atual:,.0f} <span style="font-size:1.2rem; color:#94a3b8;">t Expedidas</span></div>
+        <div class="master-metric-sub" style="color: #007BFF;">Meta Diária Necessária: {meta_diaria_carr:,.0f} t/dia</div>
     </summary>
     <div class="master-content">
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
             <div style="background-color:#111c2e; border:1px solid #1c2b42; border-radius:8px; padding:10px;">
-                <div style="font-size:0.75rem; color:#38bdf8; font-weight:800;">EXPEDIÇÃO ANUAL</div>
+                <div style="font-size:0.75rem; color:#007BFF; font-weight:800;">EXPEDIÇÃO ANUAL</div>
                 <div style="font-size:1.3rem; font-weight:900; color:#fff;">{carr_ano_atual:,.0f} t</div>
-                <div style="font-size:0.7rem; color:#94a3b8;">Proj. 31/12: <b style="color:#38bdf8;">{proj_carr_fechamento:,.0f} t</b></div>
+                <div style="font-size:0.7rem; color:#94a3b8;">Proj. 31/12: <b style="color:#007BFF;">{proj_carr_fechamento:,.0f} t</b></div>
             </div>
             <div style="background-color:#111c2e; border:1px solid #1c2b42; border-radius:8px; padding:10px;">
                 <div style="font-size:0.75rem; color:#00D672; font-weight:800;">PRODUÇÃO ANUAL</div>
