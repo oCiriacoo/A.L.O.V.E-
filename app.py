@@ -450,6 +450,21 @@ html_meta_anual = f"""
 st.markdown(html_meta_anual.replace('\n', ''), unsafe_allow_html=True)
 
 # ==============================================================================
+# 📦 BLOCO 1: PÁTIO DE VEÍCULOS
+# ==============================================================================
+html_patio = '<details class="master-box" style="border-left-color: #38bdf8;">'
+html_patio += f'<summary><div class="master-metric-title">🚛 Pátio da Fábrica (Tempo Real)</div><div class="master-metric-val">{total_veiculos_fisicos} <span style="font-size:1.1rem; color:#94a3b8;">Veículos Físicos</span></div><div class="master-metric-sub" style="color: #38bdf8;">Carga Disponível: {vol_patio_disponivel:,.0f} t</div></summary>'
+html_patio += '<div class="master-content patio-grid">'
+
+blocos_patio = [("🚙 Prog/Chegando", "PR", "#94A3B8"), ("📋 Checklist", "00", "#E5B800"), ("🚛 Apoio", "01", "#E67E22"), ("✅ Fila", "FC", "#00D672"), ("📄 Termo SAP", "TR", "#3498DB")]
+for tit, chv, cor in blocos_patio:
+    v_qtd = dados_patio.get(chv, {}).get("veiculos", 0)
+    v_ton = forcar_par(dados_patio.get(chv, {}).get("peso", 0))
+    html_patio += f"<div class='card-patio-sub' style='border-left-color: {cor};'><div class='card-patio-title' style='color: {cor};'>{tit}</div><div class='card-patio-qtd'>{int(v_qtd)} <span style='font-size:0.75rem; color:#94a3b8;'>veíc</span></div><div class='card-patio-ton'>{v_ton:,.0f} t</div></div>"
+
+html_patio += "</div></details>"
+st.markdown(html_patio, unsafe_allow_html=True)
+# ==============================================================================
 # 🏭 BLOCO 2: PRODUÇÃO DO DIA (MS1 / MS2)
 # ==============================================================================
 html_prod_content = ""
