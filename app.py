@@ -83,12 +83,6 @@ st.markdown("""
             margin-bottom: 2px;
             text-shadow: 0 0 10px rgba(255, 119, 0, 0.4);
         }
-        
-        .prev-sub {
-            font-size: 0.72rem;
-            color: #94a3b8;
-            font-weight: 700;
-        }
 
         details.master-box {
             background-color: #111c2e;
@@ -139,6 +133,13 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 SHEET_ID = "10FluiIwlynIlPDA74QI8mpHSIrAc-62H1hZNRBsvfCA"
+
+def forcar_par(valor):
+    """Garante que qualquer tonelagem exibida seja sempre um número par."""
+    val_int = int(round(float(valor or 0)))
+    if val_int % 2 != 0:
+        val_int += 1
+    return val_int
 
 @st.cache_data(ttl=20)
 def carregar_dados_nuvem(worksheet_name: str, cabecalho=0):
@@ -216,13 +217,13 @@ def buscar_dados_turnos_historico(data_alvo):
                 except:
                     continue
 
-        vol_t1 = max(0.0, corte_08 - corte_00) if corte_08 > 0 else 0.0
+        vol_t1 = forcar_par(max(0.0, corte_08 - corte_00)) if corte_08 > 0 else 0
         if is_hoje:
-            vol_t2 = max(0.0, corte_16 - corte_08) if agora_br.hour >= 16 else (max(0.0, corte_fim - corte_08) if agora_br.hour >= 8 else 0.0)
-            vol_t3 = max(0.0, corte_fim - corte_16) if agora_br.hour >= 16 else 0.0
+            vol_t2 = forcar_par(max(0.0, corte_16 - corte_08) if agora_br.hour >= 16 else (max(0.0, corte_fim - corte_08) if agora_br.hour >= 8 else 0.0))
+            vol_t3 = forcar_par(max(0.0, corte_fim - corte_16) if agora_br.hour >= 16 else 0.0)
         else:
-            vol_t2 = max(0.0, corte_16 - corte_08) if corte_16 > 0 else 0.0
-            vol_t3 = max(0.0, corte_fim - corte_16) if corte_fim > 0 else 0.0
+            vol_t2 = forcar_par(max(0.0, corte_16 - corte_08) if corte_16 > 0 else 0.0)
+            vol_t3 = forcar_par(max(0.0, corte_fim - corte_16) if corte_fim > 0 else 0.0)
 
         turnos_exibir = []
         if vol_t1 > 0 or (is_hoje and agora_br.hour < 8 and vol_t1 > 0):
@@ -251,58 +252,55 @@ def build_vertical_chart(data, height=150):
     return html + lbl_html
 
 # ==============================================================================
-# 🚀 CARREGAMENTO DIRETO DAS ABAS MOBILE GERADAS PELO CORE
+# 🚀 CARREGAMENTO DAS ABAS MOBILE GERADAS PELO CORE
 # ==============================================================================
 df_dash = carregar_dados_nuvem("Mobile_Dashboard", cabecalho=0)
 df_qual = carregar_dados_nuvem("Mobile_Qualidade", cabecalho=0)
 df_alertas = carregar_dados_nuvem("Mobile_Alertas", cabecalho=0)
 df_cache = carregar_dados_nuvem("Cache_Painel", cabecalho=0)
 
-# Resgate de Cache_Painel para materiais segregados
 cache_dict = {str(row.iloc[0]).strip(): str(row.iloc[1]).strip() for _, row in df_cache.iterrows()} if not df_cache.empty else {}
 dados_segregados = parse_robusto(cache_dict.get("dados_segregados", "{}"))
 
-# Valores padrão de fallback
 ultima_att = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-vol_hoje = 0.0
-vol_ontem = 0.0
-prev_carr = 0.0
-prod_hoje_calc = 0.0
-prev_prod = 0.0
-estoque_total = 0.0
+vol_hoje = 0
+vol_ontem = 0
+prev_carr = 0
+prod_hoje_calc = 0
+prev_prod = 0
+estoque_total = 0
 status_transbordo = "NORMAL"
 ritmo_torre = "NORMAL"
 
 dados_patio = {
-    "PR": {"veiculos": 0, "peso": 0.0},
-    "00": {"veiculos": 0, "peso": 0.0},
-    "01": {"veiculos": 0, "peso": 0.0},
-    "FC": {"veiculos": 0, "peso": 0.0},
-    "TR": {"veiculos": 0, "peso": 0.0}
+    "PR": {"veiculos": 0, "peso": 0},
+    "00": {"veiculos": 0, "peso": 0},
+    "01": {"veiculos": 0, "peso": 0},
+    "FC": {"veiculos": 0, "peso": 0},
+    "TR": {"veiculos": 0, "peso": 0}
 }
 
 if not df_dash.empty:
     row_d = df_dash.iloc[0]
     ultima_att = str(row_d.get("DATA_HORA", ultima_att))
-    vol_hoje = safe_to_numeric(row_d.get("EXPEDICAO_HOJE", 0))
-    vol_ontem = safe_to_numeric(row_d.get("EXPEDICAO_ONTEM", 0))
-    prev_carr = safe_to_numeric(row_d.get("PREV_EXPEDICAO", 0))
-    prod_hoje_calc = safe_to_numeric(row_d.get("PRODUCAO_HOJE", 0))
-    prev_prod = safe_to_numeric(row_d.get("PREV_PRODUCAO", 0))
-    estoque_total = safe_to_numeric(row_d.get("ESTOQUE_TOTAL", 0))
+    vol_hoje = forcar_par(safe_to_numeric(row_d.get("EXPEDICAO_HOJE", 0)))
+    vol_ontem = forcar_par(safe_to_numeric(row_d.get("EXPEDICAO_ONTEM", 0)))
+    prev_carr = forcar_par(safe_to_numeric(row_d.get("PREV_EXPEDICAO", 0)))
+    prod_hoje_calc = forcar_par(safe_to_numeric(row_d.get("PRODUCAO_HOJE", 0)))
+    prev_prod = forcar_par(safe_to_numeric(row_d.get("PREV_PRODUCAO", 0)))
+    estoque_total = forcar_par(safe_to_numeric(row_d.get("ESTOQUE_TOTAL", 0)))
     status_transbordo = str(row_d.get("STATUS_TRANSBORDO", "NORMAL"))
     ritmo_torre = str(row_d.get("RITMO_TORRE", "NORMAL"))
     
-    dados_patio["PR"] = {"veiculos": int(safe_to_numeric(row_d.get("PR_VEIC", 0))), "peso": safe_to_numeric(row_d.get("PR_TON", 0))}
-    dados_patio["00"] = {"veiculos": int(safe_to_numeric(row_d.get("00_VEIC", 0))), "peso": safe_to_numeric(row_d.get("00_TON", 0))}
-    dados_patio["01"] = {"veiculos": int(safe_to_numeric(row_d.get("01_VEIC", 0))), "peso": safe_to_numeric(row_d.get("01_TON", 0))}
-    dados_patio["FC"] = {"veiculos": int(safe_to_numeric(row_d.get("FC_VEIC", 0))), "peso": safe_to_numeric(row_d.get("FC_TON", 0))}
-    dados_patio["TR"] = {"veiculos": int(safe_to_numeric(row_d.get("TR_VEIC", 0))), "peso": safe_to_numeric(row_d.get("TR_TON", 0))}
+    dados_patio["PR"] = {"veiculos": int(safe_to_numeric(row_d.get("PR_VEIC", 0))), "peso": forcar_par(safe_to_numeric(row_d.get("PR_TON", 0)))}
+    dados_patio["00"] = {"veiculos": int(safe_to_numeric(row_d.get("00_VEIC", 0))), "peso": forcar_par(safe_to_numeric(row_d.get("00_TON", 0)))}
+    dados_patio["01"] = {"veiculos": int(safe_to_numeric(row_d.get("01_VEIC", 0))), "peso": forcar_par(safe_to_numeric(row_d.get("01_TON", 0)))}
+    dados_patio["FC"] = {"veiculos": int(safe_to_numeric(row_d.get("FC_VEIC", 0))), "peso": forcar_par(safe_to_numeric(row_d.get("FC_TON", 0)))}
+    dados_patio["TR"] = {"veiculos": int(safe_to_numeric(row_d.get("TR_VEIC", 0))), "peso": forcar_par(safe_to_numeric(row_d.get("TR_TON", 0)))}
 
 total_veiculos_fisicos = dados_patio["00"]["veiculos"] + dados_patio["01"]["veiculos"] + dados_patio["FC"]["veiculos"]
-vol_patio_disponivel = dados_patio["00"]["peso"] + dados_patio["01"]["peso"] + dados_patio["FC"]["peso"]
+vol_patio_disponivel = forcar_par(dados_patio["00"]["peso"] + dados_patio["01"]["peso"] + dados_patio["FC"]["peso"])
 
-# Resgate de Qualidade
 dados_maquinas = {"MS1": {}, "MS2": {}}
 if not df_qual.empty:
     for _, r_q in df_qual.iterrows():
@@ -314,9 +312,9 @@ if not df_qual.empty:
                 "sujidade": safe_to_numeric(r_q.get("SUJIDADE", 0)),
                 "viscosidade": safe_to_numeric(r_q.get("VISCOSIDADE", 0)),
                 "ph": safe_to_numeric(r_q.get("PH", 0)),
-                "producao": safe_to_numeric(r_q.get("PROD_TOTAL", 0)),
-                "l1": safe_to_numeric(r_q.get("PROD_LINHA_1", 0)),
-                "l2": safe_to_numeric(r_q.get("PROD_LINHA_2", 0)),
+                "producao": forcar_par(safe_to_numeric(r_q.get("PROD_TOTAL", 0))),
+                "l1": forcar_par(safe_to_numeric(r_q.get("PROD_LINHA_1", 0))),
+                "l2": forcar_par(safe_to_numeric(r_q.get("PROD_LINHA_2", 0))),
                 "desclassificando": str(r_q.get("DESCLASSIFICANDO", "NAO")).upper() == "SIM"
             }
 
@@ -350,18 +348,16 @@ with col_btn:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# BLOCOS DE PREVISÕES (NEON)
+# BLOCOS DE PREVISÕES (NEON LIMPO - SEM SUBTÍTULO)
 html_previsoes = f"""
 <div class="prev-container">
     <div class="prev-card-prod">
         <div class="prev-title">📈 Prev. Produção</div>
         <div class="prev-val">{prev_prod:,.0f} <span style="font-size:0.9rem;">t</span></div>
-        <div class="prev-sub">Ritmo 24h Base MS1+MS2</div>
     </div>
     <div class="prev-card-carr">
         <div class="prev-title">🎯 Prev. Expedição</div>
         <div class="prev-val">{prev_carr:,.0f} <span style="font-size:0.9rem;">t</span></div>
-        <div class="prev-sub">Realizado + Cap. Pátio</div>
     </div>
 </div>
 """
@@ -391,37 +387,37 @@ if not df_alertas.empty:
         """, unsafe_allow_html=True)
 
 # ==============================================================================
-# 🎯 BLOCO 0: META & BALANÇO ESTRATÉGICO ANUAL (31/12)
+# 🎯 BLOCO 0: COMPARATIVO PRODUÇÃO vs EXPEDIÇÃO
 # ==============================================================================
 hoje_dt = date.today()
 fim_ano = date(hoje_dt.year, 12, 31)
 dias_restantes = max(1, (fim_ano - hoje_dt).days)
-meta_teto_estoque = 3468.0
+meta_teto_estoque = 3468.0[cite: 1]
 
-# Base anual padrão integrada à nuvem
-carr_base_ano = 1356346.0
-prod_base_ano = 1358998.0
+carr_base_ano = 1356346.0[cite: 1]
+prod_base_ano = 1358998.0[cite: 1]
 ritmo_esperado_dia = 5200.0
 
-carr_ano_atual = carr_base_ano + vol_hoje
-prod_ano_atual = prod_base_ano + prod_hoje_calc
+carr_ano_atual = forcar_par(carr_base_ano + vol_hoje)
+prod_ano_atual = forcar_par(prod_base_ano + prod_hoje_calc)
+
 excesso_estoque = max(0.0, estoque_total - meta_teto_estoque)
 ritmo_extra_dia = excesso_estoque / dias_restantes
-meta_diaria_carr = ritmo_esperado_dia + ritmo_extra_dia
+meta_diaria_carr = forcar_par(ritmo_esperado_dia + ritmo_extra_dia)
 
-proj_prod_fechamento = prod_ano_atual + (dias_restantes * ritmo_esperado_dia)
+proj_prod_fechamento = forcar_par(prod_ano_atual + (dias_restantes * ritmo_esperado_dia))
 carr_futuro_nec = (estoque_total + (dias_restantes * ritmo_esperado_dia)) - meta_teto_estoque
-proj_carr_fechamento = carr_ano_atual + carr_futuro_nec
+proj_carr_fechamento = forcar_par(carr_ano_atual + carr_futuro_nec)
 
 cor_meta = "#00D672" if excesso_estoque <= 0 else ("#FF9F1C" if excesso_estoque <= 1000 else "#E74C3C")
-status_ritmo_meta = "DENTRO DA META" if excesso_estoque <= 0 else ("ATENÇÃO AO RITMO" if excesso_estoque <= 1000 else "FORA DA META")
+status_ritmo_meta = "DENTRO DA META" if excesso_estoque <= 0 else ("ATENÇÃO" if excesso_estoque <= 1000 else "FORA DA META")
 
 html_meta_anual = f"""
 <details class="master-box" style="border-left-color: {cor_meta};">
     <summary>
-        <div class="master-metric-title">🎯 Balanço Estratégico Anual ({dias_restantes} dias até 31/12)</div>
+        <div class="master-metric-title">📊 COMPARATIVO PRODUÇÃO vs EXPEDIÇÃO ({dias_restantes} dias até 31/12)</div>
         <div class="master-metric-val">{carr_ano_atual:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">t Expedidas</span></div>
-        <div class="master-metric-sub" style="color: {cor_meta};">Meta Diária de Carregamento: {meta_diaria_carr:,.0f} t/dia ({status_ritmo_meta})</div>
+        <div class="master-metric-sub" style="color: {cor_meta};">Meta Diária: {meta_diaria_carr:,.0f} t/dia • Status: {status_ritmo_meta}</div>
     </summary>
     <div class="master-content">
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
@@ -436,8 +432,9 @@ html_meta_anual = f"""
                 <div style="font-size:0.7rem; color:#94a3b8;">Proj. 31/12: <b style="color:#00D672;">{proj_prod_fechamento:,.0f} t</b></div>
             </div>
         </div>
-        <div style="background-color:#111c2e; border:1px solid #1c2b42; border-radius:8px; padding:10px; font-size:0.8rem; color:#94a3b8;">
-            🏁 <b>Meta Teto Virada 25/26:</b> 3.468 t (Excesso a queimar: <b style="color:{cor_meta};">{excesso_estoque:,.0f} t</b> / +{ritmo_extra_dia:,.0f} t/dia)
+        <div style="background-color:#111c2e; border:1px solid #1c2b42; border-radius:8px; padding:10px; font-size:0.8rem; color:#94a3b8; display:flex; justify-content:space-between; align-items:center;">
+            <span>Estoque Pátio vs Meta 31/12:</span>
+            <b style="color:#ffffff;">{estoque_total:,.0f} t / 3.468 t</b>
         </div>
     </div>
 </details>
@@ -448,13 +445,13 @@ st.markdown(html_meta_anual.replace('\n', ''), unsafe_allow_html=True)
 # 📦 BLOCO 1: PÁTIO DE VEÍCULOS
 # ==============================================================================
 html_patio = '<details class="master-box" style="border-left-color: #38bdf8;">'
-html_patio += f'<summary><div class="master-metric-title">🚛 Pátio da Fábrica (Tempo Real)</div><div class="master-metric-val">{total_veiculos_fisicos} <span style="font-size:1.1rem; color:#94a3b8;">Veículos Físicos</span></div><div class="master-metric-sub" style="color: #38bdf8;">Carga Disponível p/ Carregar: {vol_patio_disponivel:,.0f} t</div></summary>'
+html_patio += f'<summary><div class="master-metric-title">🚛 Pátio da Fábrica (Tempo Real)</div><div class="master-metric-val">{total_veiculos_fisicos} <span style="font-size:1.1rem; color:#94a3b8;">Veículos Físicos</span></div><div class="master-metric-sub" style="color: #38bdf8;">Carga Disponível: {vol_patio_disponivel:,.0f} t</div></summary>'
 html_patio += '<div class="master-content patio-grid">'
 
 blocos_patio = [("🚙 Prog/Chegando", "PR", "#94A3B8"), ("📋 Checklist", "00", "#E5B800"), ("🚛 Apoio", "01", "#E67E22"), ("✅ Fila", "FC", "#00D672"), ("📄 Termo SAP", "TR", "#3498DB")]
 for tit, chv, cor in blocos_patio:
     v_qtd = dados_patio.get(chv, {}).get("veiculos", 0)
-    v_ton = dados_patio.get(chv, {}).get("peso", 0.0)
+    v_ton = dados_patio.get(chv, {}).get("peso", 0)
     html_patio += f"<div class='card-patio-sub' style='border-left-color: {cor};'><div class='card-patio-title' style='color: {cor};'>{tit}</div><div class='card-patio-qtd'>{int(v_qtd)} <span style='font-size:0.75rem; color:#94a3b8;'>veíc</span></div><div class='card-patio-ton'>{v_ton:,.0f} t</div></div>"
 
 html_patio += "</div></details>"
@@ -469,13 +466,13 @@ for maq in ["MS1", "MS2"]:
     q_dados = dados_maquinas.get(maq, {})
     if q_dados:
         mat_maq = q_dados.get("material", "--")
-        p_maq = q_dados.get("producao", 0.0)
+        p_maq = q_dados.get("producao", 0)
         q_suj = q_dados.get('sujidade', 0.0)
         q_visc = q_dados.get('viscosidade', 0.0)
         q_alvura = q_dados.get('alvura', 0.0)
         q_ph = q_dados.get('ph', 0.0)
-        l1 = q_dados.get('l1', 0.0)
-        l2 = q_dados.get('l2', 0.0)
+        l1 = q_dados.get('l1', 0)
+        l2 = q_dados.get('l2', 0)
         desclass = q_dados.get("desclassificando", False)
         
         c_suj = "#00D672" if q_suj <= 2.5 else "#E74C3C"
@@ -544,8 +541,8 @@ ontem_date = hoje_date - timedelta(days=1)
 dados_exp_hoje = buscar_dados_turnos_historico(hoje_date)
 dados_exp_ontem = buscar_dados_turnos_historico(ontem_date)
 
-vol_exp_hoje = vol_hoje if vol_hoje > 0 else (dados_exp_hoje.get("total_dia", 0.0) if dados_exp_hoje else 0.0)
-vol_exp_ontem = vol_ontem if vol_ontem > 0 else (dados_exp_ontem.get("total_dia", 0.0) if dados_exp_ontem else 0.0)
+vol_exp_hoje = vol_hoje if vol_hoje > 0 else (forcar_par(dados_exp_hoje.get("total_dia", 0)) if dados_exp_hoje else 0)
+vol_exp_ontem = vol_ontem if vol_ontem > 0 else (forcar_par(dados_exp_ontem.get("total_dia", 0)) if dados_exp_ontem else 0)
 
 html_hoje = "<div style='font-size:0.75rem; font-weight:800; color:#00D672; text-transform:uppercase; margin-bottom:10px; text-align:left;'>Turnos em Operação Hoje:</div>"
 if dados_exp_hoje and "turnos" in dados_exp_hoje:
@@ -557,9 +554,10 @@ if dados_exp_hoje and "turnos" in dados_exp_hoje:
         cor_b = "#FF9F1C" if is_atv else "#1c2b42"
         cor_txt = "#FF9F1C" if is_atv else "#ffffff"
         sub_txt = f"{t['horario']} (ATIVO)" if is_atv else t['horario']
+        v_par = forcar_par(t['vol'])
         
-        html_hoje += f"<div style='flex:1; background-color:#111c2e; border:1.5px solid {cor_b}; border-radius:8px; padding:8px; text-align:center;'><div style='font-size:0.75rem; font-weight:800; color:{cor_txt};'>{t['letra']}</div><div style='font-size:1.1rem; font-weight:900; color:#ffffff;'>{t['vol']:,.0f} t</div><div style='font-size:0.65rem; color:#94a3b8;'>{sub_txt}</div></div>"
-        chart_data_hoje.append({"label": t['letra'], "value": t['vol'], "text": f"{t['vol']:,.0f} t", "color": "#FF9F1C" if is_atv else "#00D672"})
+        html_hoje += f"<div style='flex:1; background-color:#111c2e; border:1.5px solid {cor_b}; border-radius:8px; padding:8px; text-align:center;'><div style='font-size:0.75rem; font-weight:800; color:{cor_txt};'>{t['letra']}</div><div style='font-size:1.1rem; font-weight:900; color:#ffffff;'>{v_par:,.0f} t</div><div style='font-size:0.65rem; color:#94a3b8;'>{sub_txt}</div></div>"
+        chart_data_hoje.append({"label": t['letra'], "value": v_par, "text": f"{v_par:,.0f} t", "color": "#FF9F1C" if is_atv else "#00D672"})
     html_hoje += "</div>"
     html_hoje += build_vertical_chart(chart_data_hoje)
 else:
@@ -570,8 +568,9 @@ if dados_exp_ontem and "turnos" in dados_exp_ontem:
     html_ontem += "<div style='display:flex; gap:6px; margin-bottom:8px;'>"
     chart_data_ontem = []
     for t in dados_exp_ontem["turnos"]:
-        html_ontem += f"<div style='flex:1; background-color:#111c2e; border:1.5px solid #1c2b42; border-radius:8px; padding:8px; text-align:center;'><div style='font-size:0.75rem; font-weight:800; color:#38bdf8;'>{t['letra']}</div><div style='font-size:1.1rem; font-weight:900; color:#ffffff;'>{t['vol']:,.0f} t</div><div style='font-size:0.65rem; color:#94a3b8;'>{t['horario']}</div></div>"
-        chart_data_ontem.append({"label": t['letra'], "value": t['vol'], "text": f"{t['vol']:,.0f} t", "color": "#38bdf8"})
+        v_par_ontem = forcar_par(t['vol'])
+        html_ontem += f"<div style='flex:1; background-color:#111c2e; border:1.5px solid #1c2b42; border-radius:8px; padding:8px; text-align:center;'><div style='font-size:0.75rem; font-weight:800; color:#38bdf8;'>{t['letra']}</div><div style='font-size:1.1rem; font-weight:900; color:#ffffff;'>{v_par_ontem:,.0f} t</div><div style='font-size:0.65rem; color:#94a3b8;'>{t['horario']}</div></div>"
+        chart_data_ontem.append({"label": t['letra'], "value": v_par_ontem, "text": f"{v_par_ontem:,.0f} t", "color": "#38bdf8"})
     html_ontem += "</div>"
     html_ontem += build_vertical_chart(chart_data_ontem)
 else:
@@ -632,10 +631,11 @@ if dados_segregados:
     df_seg = pd.DataFrame(list(dados_segregados.items()), columns=["Material", "Toneladas"]).sort_values(by="Toneladas", ascending=False)
     chart_data_est = []
     for _, row in df_seg.iterrows():
+        t_par = forcar_par(row["Toneladas"])
         chart_data_est.append({
             "label": row["Material"],
-            "value": row["Toneladas"],
-            "text": f"{row['Toneladas']:,.0f} t",
+            "value": t_par,
+            "text": f"{t_par:,.0f} t",
             "color": "#38bdf8"
         })
     html_est += build_vertical_chart(chart_data_est)
@@ -646,7 +646,7 @@ html_est += "</div></details>"
 st.markdown(html_est, unsafe_allow_html=True)
 
 # ==============================================================================
-# 🚜 BLOCO 5: FROTA (MANTIDO E PROTEGIDO)
+# 🚜 BLOCO 5: FROTA
 # ==============================================================================
 df_frota = carregar_dados_nuvem("Rodizio_Frota")
 html_frota = '<details class="master-box" style="border-left-color: #E67E22;">'
@@ -703,7 +703,7 @@ html_frota += '</details>'
 st.markdown(html_frota, unsafe_allow_html=True)
 
 # ==============================================================================
-# ⛽ BLOCO 6: CONSUMO GLP MENSAL (MANTIDO E PROTEGIDO)
+# ⛽ BLOCO 6: CONSUMO GLP MENSAL
 # ==============================================================================
 df_glp = carregar_dados_nuvem("Abastecimentos_GLP", cabecalho=None)
 html_glp = '<details class="master-box" style="border-left-color: #fd7e14;">'
@@ -723,7 +723,7 @@ if not df_glp.empty and len(df_glp.columns) >= 8:
             meses_disp.sort(key=lambda x: datetime.strptime(x, "%m/%Y"))
             mes_recente = meses_disp[-1]
             df_mes_recente = df_g[df_g["MES_ANO"] == mes_recente]
-            total_glp_recente = df_mes_recente["KG_NUM"].sum()
+            total_glp_recente = forcar_par(df_mes_recente["KG_NUM"].sum())
 
             html_glp += f'<summary><div class="master-metric-title">⛽ Consumo de GLP da Frota</div><div class="master-metric-val">{total_glp_recente:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">KG</span></div><div class="master-metric-sub" style="color: #fd7e14;">Acumulado do Mês Atual ({mes_recente})</div></summary>'
             html_glp += '<div class="master-content">'
@@ -733,10 +733,11 @@ if not df_glp.empty and len(df_glp.columns) >= 8:
             if not df_maq.empty:
                 chart_data_glp = []
                 for _, row in df_maq.iterrows():
+                    val_kg_par = forcar_par(row["KG_NUM"])
                     chart_data_glp.append({
                         "label": row["MAQUINA"],
-                        "value": row["KG_NUM"],
-                        "text": f"{row['KG_NUM']:,.0f} kg",
+                        "value": val_kg_par,
+                        "text": f"{val_kg_par:,.0f} kg",
                         "color": "#fd7e14"
                     })
                 html_glp += build_vertical_chart(chart_data_glp)
