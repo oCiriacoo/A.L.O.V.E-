@@ -15,7 +15,7 @@ st.set_page_config(
 )
 
 # ==============================================================================
-# 🎨 CSS AVANÇADO (CARDS CLICÁVEIS + PREVISÕES TOP + GRÁFICOS VERTICAIS)
+# 🎨 CSS AVANÇADO (CARDS NEON + EXPANDERS + GRÁFICOS VERTICAIS)
 # ==============================================================================
 st.markdown("""
     <style>
@@ -28,35 +28,66 @@ st.markdown("""
         
         input[type="radio"] { display: none; }
         
-        /* Grid das Previsões no Topo */
+        /* Grid das Previsões no Topo (Efeito Neon) */
         .prev-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            gap: 12px;
             margin-bottom: 14px;
         }
-        .prev-card {
-            background-color: #111c2e;
-            border: 1px solid #1c2b42;
-            border-radius: 10px;
-            padding: 12px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+        
+        /* Card Produção: Azul Neon */
+        .prev-card-prod {
+            background-color: #05080f;
+            border: 2px solid #00f3ff;
+            border-radius: 12px;
+            padding: 14px;
+            box-shadow: 0 0 12px rgba(0, 243, 255, 0.25), inset 0 0 8px rgba(0, 243, 255, 0.1);
         }
-        .prev-card-title {
-            font-size: 0.75rem;
+        .prev-card-prod .prev-title {
+            color: #00f3ff;
+            font-size: 0.78rem;
             font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.8px;
             margin-bottom: 4px;
         }
-        .prev-card-val {
-            font-size: 1.6rem;
+        .prev-card-prod .prev-val {
+            color: #00f3ff;
+            font-size: 1.85rem;
             font-weight: 900;
             line-height: 1.1;
             margin-bottom: 2px;
+            text-shadow: 0 0 10px rgba(0, 243, 255, 0.4);
         }
-        .prev-card-sub {
-            font-size: 0.75rem;
+        
+        /* Card Carregamento: Laranja Neon */
+        .prev-card-carr {
+            background-color: #0d0600;
+            border: 2px solid #ff7700;
+            border-radius: 12px;
+            padding: 14px;
+            box-shadow: 0 0 12px rgba(255, 119, 0, 0.25), inset 0 0 8px rgba(255, 119, 0, 0.1);
+        }
+        .prev-card-carr .prev-title {
+            color: #ff7700;
+            font-size: 0.78rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 4px;
+        }
+        .prev-card-carr .prev-val {
+            color: #ff7700;
+            font-size: 1.85rem;
+            font-weight: 900;
+            line-height: 1.1;
+            margin-bottom: 2px;
+            text-shadow: 0 0 10px rgba(255, 119, 0, 0.4);
+        }
+        
+        .prev-sub {
+            font-size: 0.72rem;
             color: #94a3b8;
             font-weight: 700;
         }
@@ -139,7 +170,6 @@ def safe_to_numeric(val):
         except: return 0.0
 
 def descobrir_letras_turnos(data_alvo):
-    # Âncora oficial do ciclo 4x2
     data_referencia = date(2026, 9, 22)
     dias_passados = (data_alvo - data_referencia).days
     turnos = {"08_16": "C", "16_00": "B", "madrugada": "D"}
@@ -150,14 +180,12 @@ def descobrir_letras_turnos(data_alvo):
 
 @st.cache_data(ttl=60)
 def buscar_dados_turnos_historico(data_alvo):
-    """Calcula os volumes segregados por turno para qualquer data (Hoje ou D-1)."""
     agora_br = datetime.utcnow() - timedelta(hours=3)
     hoje_date = agora_br.date()
     is_hoje = (data_alvo == hoje_date)
     
     letras = descobrir_letras_turnos(data_alvo)
     
-    # Se for hoje, marca o turno corrente; se for ontem, nenhum fica com badge (ATIVO)
     ativo_key = None
     if is_hoje:
         if agora_br.hour < 8: ativo_key = "t1"
@@ -177,7 +205,6 @@ def buscar_dados_turnos_historico(data_alvo):
         hora_16 = hora_00.replace(hour=16)
         hora_fim = hora_00.replace(hour=23, minute=59, second=59)
 
-        # Varredura cronológica
         for row in reversed(linhas[1:]):
             if len(row) > 3:
                 try:
@@ -202,7 +229,6 @@ def buscar_dados_turnos_historico(data_alvo):
             vol_t3 = max(0.0, corte_fim - corte_16) if corte_fim > 0 else 0.0
 
         turnos_exibir = []
-        # Regra de negócio: Turno D só aparece se houver volume carregado
         if vol_t1 > 0 or (is_hoje and agora_br.hour < 8 and vol_t1 > 0):
             turnos_exibir.append({"key": "t1", "letra": f"Turno {letras['madrugada']}", "vol": vol_t1, "horario": "00h - 08h"})
             
@@ -247,7 +273,7 @@ prod_ms1 = safe_to_numeric(qualidade.get("MS1", {}).get("producao", 0))
 prod_ms2 = safe_to_numeric(qualidade.get("MS2", {}).get("producao", 0))
 prod_hoje = prod_ms1 + prod_ms2
 
-# Cálculos dinâmicos
+# Cálculos temporais e estimativas
 agora = datetime.utcnow() - timedelta(hours=3)
 hoje_date = agora.date()
 ontem_date = hoje_date - timedelta(days=1)
@@ -276,19 +302,19 @@ with col_ref:
         st.rerun()
 
 # ==============================================================================
-# 🎯 BLOCO EXCLUSIVO DE PREVISÕES (TOP CARD DUPLO)
+# ⚡ BLOCO EXCLUSIVO DE PREVISÕES (NEON CYBERPUNK)
 # ==============================================================================
 html_previsoes = f"""
 <div class="prev-container">
-    <div class="prev-card" style="border-left: 4px solid #E5B800;">
-        <div class="prev-card-title" style="color: #E5B800;">📈 Prev. Produção</div>
-        <div class="prev-card-val" style="color: #ffffff;">{prev_prod:,.0f} <span style="font-size:0.9rem; color:#94a3b8;">t</span></div>
-        <div class="prev-card-sub">Ritmo 24h Base MS1+MS2</div>
+    <div class="prev-card-prod">
+        <div class="prev-title">📈 Prev. Produção</div>
+        <div class="prev-val">{prev_prod:,.0f} <span style="font-size:0.9rem;">t</span></div>
+        <div class="prev-sub">Ritmo 24h Base MS1+MS2</div>
     </div>
-    <div class="prev-card" style="border-left: 4px solid #00D672;">
-        <div class="prev-card-title" style="color: #00D672;">🎯 Prev. Expedição</div>
-        <div class="prev-card-val" style="color: #ffffff;">{prev_carr:,.0f} <span style="font-size:0.9rem; color:#94a3b8;">t</span></div>
-        <div class="prev-card-sub">Realizado + Cap. Pátio</div>
+    <div class="prev-card-carr">
+        <div class="prev-title">🎯 Prev. Expedição</div>
+        <div class="prev-val">{prev_carr:,.0f} <span style="font-size:0.9rem;">t</span></div>
+        <div class="prev-sub">Realizado + Cap. Pátio</div>
     </div>
 </div>
 """
@@ -318,7 +344,7 @@ html_patio += "</div></details>"
 st.markdown(html_patio, unsafe_allow_html=True)
 
 # ==============================================================================
-# 🏭 BLOCO 2: PRODUÇÃO DO DIA (Sem Previsão no Título)
+# 🏭 BLOCO 2: PRODUÇÃO DO DIA
 # ==============================================================================
 html_prod = '<details class="master-box" style="border-left-color: #E5B800;">'
 html_prod += f'<summary><div class="master-metric-title">🏭 Produção de Celulose</div><div class="master-metric-val">{prod_hoje:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div><div class="master-metric-sub" style="color: #94a3b8;">MS1: {prod_ms1:,.0f} t | MS2: {prod_ms2:,.0f} t</div></summary>'
@@ -343,52 +369,47 @@ html_prod += "</div></details>"
 st.markdown(html_prod, unsafe_allow_html=True)
 
 # ==============================================================================
-# 🚚 BLOCO 3: EXPEDIÇÃO DO DIA & TURNOS (COM SELETOR HOJE / D-1)
+# 🚚 BLOCO 3: EXPEDIÇÃO DO DIA & TURNOS (D-1 DENTRO DO BLOCO)
 # ==============================================================================
-# Seletor discreto de período
-col_exp_label, col_exp_btn = st.columns([2.2, 1.8])
-with col_exp_label:
-    st.markdown("<div style='font-size: 0.85rem; font-weight: 800; color: #94a3b8; padding-top: 6px;'>VISUALIZAÇÃO DE EXPEDIÇÃO:</div>", unsafe_allow_html=True)
-with col_exp_btn:
-    visao_exp = st.segmented_control("", ["Hoje", "Ontem (D-1)"], default="Hoje", label_visibility="collapsed")
+# Pré-calcula dados de hoje para o cabeçalho padrão
+dados_turnos_hoje = buscar_dados_turnos_historico(hoje_date)
 
-data_consulta = hoje_date if visao_exp == "Hoje" else ontem_date
-dados_turnos = buscar_dados_turnos_historico(data_consulta)
+with st.expander(f"🚛 Expedição Realizada: {vol_hoje:,.0f} TON", expanded=True):
+    col_sub_exp, col_ctrl_exp = st.columns([2, 1.8])
+    with col_sub_exp:
+        st.caption("Detalhamento por turno operacional:")
+    with col_ctrl_exp:
+        visao_exp = st.segmented_control("Período", ["Hoje", "Ontem (D-1)"], default="Hoje", label_visibility="collapsed")
+    
+    data_consulta = hoje_date if visao_exp == "Hoje" else ontem_date
+    dados_turnos = buscar_dados_turnos_historico(data_consulta)
+    
+    if dados_turnos and "turnos" in dados_turnos:
+        turnos_list = dados_turnos["turnos"]
+        ativo_key = dados_turnos.get("ativo_key")
 
-vol_titulo = vol_hoje if visao_exp == "Hoje" else (dados_turnos.get("total_dia", 0.0) if dados_turnos else 0.0)
-sub_titulo = "Volume Acumulado Hoje" if visao_exp == "Hoje" else f"Volume Consolidado em {ontem_date.strftime('%d/%m')}"
-
-html_exp = '<details class="master-box" style="border-left-color: #00D672;" open>'
-html_exp += f'<summary><div class="master-metric-title">🚛 Expedição Realizada ({visao_exp})</div><div class="master-metric-val">{vol_titulo:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div><div class="master-metric-sub" style="color: #00D672;">{sub_titulo}</div></summary>'
-html_exp += '<div class="master-content">'
-
-if dados_turnos and "turnos" in dados_turnos:
-    turnos_list = dados_turnos["turnos"]
-    ativo_key = dados_turnos.get("ativo_key")
-
-    html_exp += '<div style="display:flex; gap:6px; margin-bottom:8px;">'
-    chart_data_exp = []
-    for t in turnos_list:
-        is_atv = (t["key"] == ativo_key)
-        cor_b = "#FF9F1C" if is_atv else "#1c2b42"
-        cor_txt = "#FF9F1C" if is_atv else "#ffffff"
-        sub_txt = f"{t['horario']} (ATIVO)" if is_atv else t['horario']
-        
-        html_exp += f"<div style='flex:1; background-color:#111c2e; border:1.5px solid {cor_b}; border-radius:8px; padding:8px; text-align:center;'><div style='font-size:0.75rem; font-weight:800; color:{cor_txt};'>{t['letra']}</div><div style='font-size:1.1rem; font-weight:900; color:#ffffff;'>{t['vol']:,.0f} t</div><div style='font-size:0.65rem; color:#94a3b8;'>{sub_txt}</div></div>"
-        
-        chart_data_exp.append({
-            "label": t['letra'],
-            "value": t['vol'],
-            "text": f"{t['vol']:,.0f} t",
-            "color": "#FF9F1C" if is_atv else "#00D672"
-        })
-    html_exp += '</div>'
-    html_exp += build_vertical_chart(chart_data_exp)
-else:
-    html_exp += '<div style="color:gray;">Aguardando escala de turnos...</div>'
-
-html_exp += "</div></details>"
-st.markdown(html_exp, unsafe_allow_html=True)
+        # Container dos turnos
+        html_cards_turnos = '<div style="display:flex; gap:6px; margin-top:8px; margin-bottom:8px;">'
+        chart_data_exp = []
+        for t in turnos_list:
+            is_atv = (t["key"] == ativo_key)
+            cor_b = "#FF9F1C" if is_atv else "#1c2b42"
+            cor_txt = "#FF9F1C" if is_atv else "#ffffff"
+            sub_txt = f"{t['horario']} (ATIVO)" if is_atv else t['horario']
+            
+            html_cards_turnos += f"<div style='flex:1; background-color:#111c2e; border:1.5px solid {cor_b}; border-radius:8px; padding:8px; text-align:center;'><div style='font-size:0.75rem; font-weight:800; color:{cor_txt};'>{t['letra']}</div><div style='font-size:1.1rem; font-weight:900; color:#ffffff;'>{t['vol']:,.0f} t</div><div style='font-size:0.65rem; color:#94a3b8;'>{sub_txt}</div></div>"
+            
+            chart_data_exp.append({
+                "label": t['letra'],
+                "value": t['vol'],
+                "text": f"{t['vol']:,.0f} t",
+                "color": "#FF9F1C" if is_atv else "#00D672"
+            })
+        html_cards_turnos += '</div>'
+        st.markdown(html_cards_turnos, unsafe_allow_html=True)
+        st.markdown(build_vertical_chart(chart_data_exp), unsafe_allow_html=True)
+    else:
+        st.caption("Aguardando escala de turnos...")
 
 # ==============================================================================
 # 📦 BLOCO 4: ESTOQUE TOTAL E MATERIAIS
@@ -415,7 +436,7 @@ html_est += "</div></details>"
 st.markdown(html_est, unsafe_allow_html=True)
 
 # ==============================================================================
-# 🚜 BLOCO 5: FROTA (CORRIGIDO PARA RECONHECER TODOS OS EQUIPAMENTOS)
+# 🚜 BLOCO 5: FROTA
 # ==============================================================================
 df_frota = carregar_dados_nuvem("Rodizio_Frota")
 equip_em_uso_agora = 0
@@ -423,7 +444,6 @@ equip_em_uso_agora = 0
 html_frota = '<details class="master-box" style="border-left-color: #E67E22;">'
 
 if not df_frota.empty:
-    # Identificação flexível das colunas para evitar incompatibilidade de cabeçalho
     cols_upper = {str(c).strip().upper(): c for c in df_frota.columns}
     col_t = cols_upper.get("TURNO_JANELA", df_frota.columns[0])
     col_posto = cols_upper.get("POSTO", df_frota.columns[1] if len(df_frota.columns) > 1 else df_frota.columns[0])
