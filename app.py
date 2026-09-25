@@ -400,10 +400,14 @@ ritmo_esperado_dia = 5200.0
 carr_ano_atual = forcar_par(carr_base_ano + vol_hoje)
 prod_ano_atual = forcar_par(prod_base_ano + prod_hoje_calc)
 
-# Variação real entre o que foi produzido e expedido
-var_prod_carr = forcar_par(prod_ano_atual - carr_ano_atual)
-sinal_var = f"+{var_prod_carr:,.0f}" if var_prod_carr > 0 else f"{var_prod_carr:,.0f}"
-cor_var = "#00D672" if var_prod_carr >= 0 else "#FF9F1C"
+# Balanço entre Produção e Expedição
+diff_prod_carr = forcar_par(abs(prod_ano_atual - carr_ano_atual))
+if carr_ano_atual >= prod_ano_atual:
+    txt_variacao = f"+{diff_prod_carr:,.0f} t (Expedição Superando)"
+    cor_variacao = "#00D672"
+else:
+    txt_variacao = f"-{diff_prod_carr:,.0f} t (Produção Superando)"
+    cor_variacao = "#FF9F1C"
 
 excesso_estoque = max(0.0, estoque_total - meta_teto_estoque)
 ritmo_extra_dia = excesso_estoque / dias_restantes
@@ -414,13 +418,11 @@ carr_futuro_nec = (estoque_total + (dias_restantes * ritmo_esperado_dia)) - meta
 proj_carr_fechamento = forcar_par(carr_ano_atual + carr_futuro_nec)
 
 html_meta_anual = f"""
-<details class="master-box" style="border-left-color: #38bdf8;">
+<details class="master-box" style="border-left-color: #38bdf8;" open>
     <summary>
         <div class="master-metric-title">📊 COMPARATIVO PRODUÇÃO vs EXPEDIÇÃO ({dias_restantes} DIAS ATÉ 31/12)</div>
         <div class="master-metric-val">{carr_ano_atual:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">t Expedidas</span></div>
-        <div class="master-metric-sub" style="color: {cor_var};">
-            Variação Produção vs Expedição: {sinal_var} t
-        </div>
+        <div class="master-metric-sub" style="color: #38bdf8;">Meta Diária Necessária: {meta_diaria_carr:,.0f} t/dia</div>
     </summary>
     <div class="master-content">
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
@@ -435,15 +437,14 @@ html_meta_anual = f"""
                 <div style="font-size:0.7rem; color:#94a3b8;">Proj. 31/12: <b style="color:#00D672;">{proj_prod_fechamento:,.0f} t</b></div>
             </div>
         </div>
-        <div style="background-color:#111c2e; border:1px solid #1c2b42; border-radius:8px; padding:10px; font-size:0.8rem; color:#94a3b8; display:flex; justify-content:space-between; align-items:center;">
-            <span>Estoque de Virada 25/26: <b>3.468 t</b></span>
-            <b style="color:#ffffff;">Pátio Atual: {forcar_par(estoque_total):,.0f} t</b>
+        <div style="background-color:#111c2e; border:1px solid #1c2b42; border-radius:8px; padding:12px; font-size:0.82rem; color:#cbd5e1; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+            <span>Variação Produção vs Expedição: <b style="color:{cor_variacao}; font-size:0.9rem;">{txt_variacao}</b></span>
+            <span>Estoque de Virada 25/26: <b style="color:#38bdf8; font-size:0.9rem;">3.468 t</b></span>
         </div>
     </div>
 </details>
 """
 st.markdown(html_meta_anual.replace('\n', ''), unsafe_allow_html=True)
-
 # ==============================================================================
 # 📦 BLOCO 1: PÁTIO DE VEÍCULOS
 # ==============================================================================
