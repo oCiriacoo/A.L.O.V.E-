@@ -21,7 +21,7 @@ st.set_page_config(
 st.markdown("""
     <style>
         .block-container {
-            padding-top: 4rem;  /* <--- O SEGREDO ESTÁ AQUI: Desce toda a página! */
+            padding-top: 3.5rem;
             padding-bottom: 2rem;
             padding-left: 0.8rem;
             padding-right: 0.8rem;
@@ -29,7 +29,6 @@ st.markdown("""
         
         input[type="radio"] { display: none; }
         
-        /* Grid das Previsões no Topo (Efeito Neon) */
         .prev-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -37,7 +36,6 @@ st.markdown("""
             margin-bottom: 14px;
         }
         
-        /* Card Produção: Azul Neon */
         .prev-card-prod {
             background-color: #05080f;
             border: 2px solid #00f3ff;
@@ -62,7 +60,6 @@ st.markdown("""
             text-shadow: 0 0 10px rgba(0, 243, 255, 0.4);
         }
         
-        /* Card Carregamento: Laranja Neon */
         .prev-card-carr {
             background-color: #0d0600;
             border: 2px solid #ff7700;
@@ -93,7 +90,6 @@ st.markdown("""
             font-weight: 700;
         }
 
-        /* Mágica do Bloco Clicável (HTML details/summary) */
         details.master-box {
             background-color: #111c2e;
             border-radius: 12px;
@@ -144,7 +140,7 @@ st.markdown("""
 
 SHEET_ID = "10FluiIwlynIlPDA74QI8mpHSIrAc-62H1hZNRBsvfCA"
 
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=20)
 def carregar_dados_nuvem(worksheet_name: str, cabecalho=0):
     sheet_encoded = urllib.parse.quote(worksheet_name)
     url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={sheet_encoded}&headers=1"
@@ -164,6 +160,14 @@ def safe_to_numeric(val):
         try: return float(val_str.replace(".", "").replace(",", "."))
         except: return 0.0
 
+def parse_robusto(texto):
+    if not texto or str(texto).strip() in ["", "None"]: return {}
+    texto_str = str(texto).strip()
+    try: return json.loads(texto_str)
+    except:
+        try: return ast.literal_eval(texto_str)
+        except: return {}
+
 def descobrir_letras_turnos(data_alvo):
     data_referencia = date(2026, 9, 22)
     dias_passados = (data_alvo - data_referencia).days
@@ -178,7 +182,6 @@ def buscar_dados_turnos_historico(data_alvo):
     agora_br = datetime.utcnow() - timedelta(hours=3)
     hoje_date = agora_br.date()
     is_hoje = (data_alvo == hoje_date)
-    
     letras = descobrir_letras_turnos(data_alvo)
     
     ativo_key = None
@@ -194,7 +197,6 @@ def buscar_dados_turnos_historico(data_alvo):
         linhas = list(csv.reader(StringIO(resp.text)))
 
         corte_00, corte_08, corte_16, corte_fim = 0.0, 0.0, 0.0, 0.0
-        
         hora_00 = datetime.combine(data_alvo, datetime.min.time())
         hora_08 = hora_00.replace(hour=8)
         hora_16 = hora_00.replace(hour=16)
@@ -215,7 +217,6 @@ def buscar_dados_turnos_historico(data_alvo):
                     continue
 
         vol_t1 = max(0.0, corte_08 - corte_00) if corte_08 > 0 else 0.0
-        
         if is_hoje:
             vol_t2 = max(0.0, corte_16 - corte_08) if agora_br.hour >= 16 else (max(0.0, corte_fim - corte_08) if agora_br.hour >= 8 else 0.0)
             vol_t3 = max(0.0, corte_fim - corte_16) if agora_br.hour >= 16 else 0.0
@@ -250,127 +251,78 @@ def build_vertical_chart(data, height=150):
     return html + lbl_html
 
 # ==============================================================================
-# 🔥 RESGATE DOS DADOS DA NUVEM & CÁLCULOS (MOTOR CUMULATIVO REAL)
+# 🚀 CARREGAMENTO DIRETO DAS ABAS MOBILE GERADAS PELO CORE
 # ==============================================================================
-# 1. Puxa os dados gerais e os históricos da Qualidade
+df_dash = carregar_dados_nuvem("Mobile_Dashboard", cabecalho=0)
+df_qual = carregar_dados_nuvem("Mobile_Qualidade", cabecalho=0)
+df_alertas = carregar_dados_nuvem("Mobile_Alertas", cabecalho=0)
 df_cache = carregar_dados_nuvem("Cache_Painel", cabecalho=0)
-df_qual_hist = carregar_dados_nuvem("Qualidade_MS", cabecalho=None) # 🔥 O Segredo está aqui!
 
+# Resgate de Cache_Painel para materiais segregados
 cache_dict = {str(row.iloc[0]).strip(): str(row.iloc[1]).strip() for _, row in df_cache.iterrows()} if not df_cache.empty else {}
-
-def parse_robusto(texto):
-    if not texto or str(texto).strip() in ["", "None"]: return {}
-    texto_str = str(texto).strip()
-    try: return json.loads(texto_str)
-    except:
-        try: return ast.literal_eval(texto_str)
-        except: return {}
-
-dados_patio = parse_robusto(cache_dict.get("dados_patio", "{}"))
 dados_segregados = parse_robusto(cache_dict.get("dados_segregados", "{}"))
 
-vol_hoje = safe_to_numeric(cache_dict.get("vol_hoje", 0))
-estoque_total = safe_to_numeric(cache_dict.get("estoque_total", 0))
-ultima_att = cache_dict.get("ultima_atualizacao", "Desconhecida")
-observacoes = cache_dict.get("observacoes", "")
+# Valores padrão de fallback
+ultima_att = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+vol_hoje = 0.0
+vol_ontem = 0.0
+prev_carr = 0.0
+prod_hoje_calc = 0.0
+prev_prod = 0.0
+estoque_total = 0.0
+status_transbordo = "NORMAL"
+ritmo_torre = "NORMAL"
 
-# 2. 🧠 LÓGICA CUMULATIVA PARA A QUALIDADE E PRODUÇÃO (LENDO A ABA HISTÓRICA)
-agora = datetime.utcnow() - timedelta(hours=3)
-hoje_date = agora.date()
-ontem_date = hoje_date - timedelta(days=1)
-
-acumuladores = {
-    "MS1": {"acumulado_prod": 0.0, "acumulado_l1": 0.0, "acumulado_l2": 0.0, "last_prod": 0.0, "last_l1": 0.0, "last_l2": 0.0},
-    "MS2": {"acumulado_prod": 0.0, "acumulado_l1": 0.0, "acumulado_l2": 0.0, "last_prod": 0.0, "last_l1": 0.0, "last_l2": 0.0}
+dados_patio = {
+    "PR": {"veiculos": 0, "peso": 0.0},
+    "00": {"veiculos": 0, "peso": 0.0},
+    "01": {"veiculos": 0, "peso": 0.0},
+    "FC": {"veiculos": 0, "peso": 0.0},
+    "TR": {"veiculos": 0, "peso": 0.0}
 }
 
-qualidade_sintetizada = {}
+if not df_dash.empty:
+    row_d = df_dash.iloc[0]
+    ultima_att = str(row_d.get("DATA_HORA", ultima_att))
+    vol_hoje = safe_to_numeric(row_d.get("EXPEDICAO_HOJE", 0))
+    vol_ontem = safe_to_numeric(row_d.get("EXPEDICAO_ONTEM", 0))
+    prev_carr = safe_to_numeric(row_d.get("PREV_EXPEDICAO", 0))
+    prod_hoje_calc = safe_to_numeric(row_d.get("PRODUCAO_HOJE", 0))
+    prev_prod = safe_to_numeric(row_d.get("PREV_PRODUCAO", 0))
+    estoque_total = safe_to_numeric(row_d.get("ESTOQUE_TOTAL", 0))
+    status_transbordo = str(row_d.get("STATUS_TRANSBORDO", "NORMAL"))
+    ritmo_torre = str(row_d.get("RITMO_TORRE", "NORMAL"))
+    
+    dados_patio["PR"] = {"veiculos": int(safe_to_numeric(row_d.get("PR_VEIC", 0))), "peso": safe_to_numeric(row_d.get("PR_TON", 0))}
+    dados_patio["00"] = {"veiculos": int(safe_to_numeric(row_d.get("00_VEIC", 0))), "peso": safe_to_numeric(row_d.get("00_TON", 0))}
+    dados_patio["01"] = {"veiculos": int(safe_to_numeric(row_d.get("01_VEIC", 0))), "peso": safe_to_numeric(row_d.get("01_TON", 0))}
+    dados_patio["FC"] = {"veiculos": int(safe_to_numeric(row_d.get("FC_VEIC", 0))), "peso": safe_to_numeric(row_d.get("FC_TON", 0))}
+    dados_patio["TR"] = {"veiculos": int(safe_to_numeric(row_d.get("TR_VEIC", 0))), "peso": safe_to_numeric(row_d.get("TR_TON", 0))}
 
-if not df_qual_hist.empty:
-    for _, row in df_qual_hist.iterrows():
-        if pd.isna(row.iloc[0]) or pd.isna(row.iloc[1]): continue
-        chave_str = str(row.iloc[0]).strip()
-        valor_str = str(row.iloc[1]).strip()
-        
-        if "MS1" in valor_str and "producao" in valor_str:
-            try: dt_row = datetime.strptime(chave_str[:10], "%d/%m/%Y").date()
-            except: dt_row = hoje_date
-                
-            if dt_row == hoje_date:
-                dados = parse_robusto(valor_str)
-                for maq in ["MS1", "MS2"]:
-                    if maq in dados:
-                        maq_data = dados[maq]
-                        qualidade_sintetizada[maq] = maq_data
-                        
-                        cur_prod = safe_to_numeric(maq_data.get("producao", maq_data.get("prod", maq_data.get("peso", 0))))
-                        cur_l1 = safe_to_numeric(maq_data.get("l1", 0.0))
-                        cur_l2 = safe_to_numeric(maq_data.get("l2", 0.0))
-                        
-                        # 🚨 DETECTOR DE RESET (Se a produção caiu mais de 20t, a máquina resetou o lote!)
-                        if cur_prod < acumuladores[maq]["last_prod"] and (acumuladores[maq]["last_prod"] - cur_prod) > 20:
-                            acumuladores[maq]["acumulado_prod"] += acumuladores[maq]["last_prod"]
-                            acumuladores[maq]["acumulado_l1"] += acumuladores[maq]["last_l1"]
-                            acumuladores[maq]["acumulado_l2"] += acumuladores[maq]["last_l2"]
-                        
-                        acumuladores[maq]["last_prod"] = cur_prod
-                        acumuladores[maq]["last_l1"] = cur_l1
-                        acumuladores[maq]["last_l2"] = cur_l2
+total_veiculos_fisicos = dados_patio["00"]["veiculos"] + dados_patio["01"]["veiculos"] + dados_patio["FC"]["veiculos"]
+vol_patio_disponivel = dados_patio["00"]["peso"] + dados_patio["01"]["peso"] + dados_patio["FC"]["peso"]
 
-# Fallback de segurança se a aba histórica falhar (Puxa o Cache_Painel)
-if not qualidade_sintetizada:
-    qualidade_sintetizada = parse_robusto(cache_dict.get("qualidade", "{}"))
-    for maq in ["MS1", "MS2"]:
-        if maq in qualidade_sintetizada:
-            acumuladores[maq]["last_prod"] = safe_to_numeric(qualidade_sintetizada[maq].get("producao", 0))
-            acumuladores[maq]["last_l1"] = safe_to_numeric(qualidade_sintetizada[maq].get("l1", 0))
-            acumuladores[maq]["last_l2"] = safe_to_numeric(qualidade_sintetizada[maq].get("l2", 0))
-
-# 3. Consolidação Final das Máquinas
-q_ms1 = qualidade_sintetizada.get("MS1", {})
-q_ms2 = qualidade_sintetizada.get("MS2", {})
-
-prod_ms1 = acumuladores["MS1"]["acumulado_prod"] + acumuladores["MS1"]["last_prod"]
-q_ms1["l1"] = acumuladores["MS1"]["acumulado_l1"] + acumuladores["MS1"]["last_l1"]
-q_ms1["l2"] = acumuladores["MS1"]["acumulado_l2"] + acumuladores["MS1"]["last_l2"]
-q_ms1["producao"] = prod_ms1
-
-prod_ms2 = acumuladores["MS2"]["acumulado_prod"] + acumuladores["MS2"]["last_prod"]
-q_ms2["l1"] = acumuladores["MS2"]["acumulado_l1"] + acumuladores["MS2"]["last_l1"]
-q_ms2["l2"] = acumuladores["MS2"]["acumulado_l2"] + acumuladores["MS2"]["last_l2"]
-q_ms2["producao"] = prod_ms2
-
-prod_hoje_calc = prod_ms1 + prod_ms2
-
-# ==============================================================================
-# 🧠 CÁLCULOS TEMPORAIS E ESTIMATIVAS (BLINDADO CONTRA O BUG DA MEIA-NOITE)
-# ==============================================================================
-# Extrai a hora exata em que o dado foi salvo no banco, para a matemática não distorcer
-try:
-    dt_cache = datetime.strptime(ultima_att, "%d/%m/%Y %H:%M:%S")
-    hora_base = dt_cache.hour + (dt_cache.minute / 60.0)
-except:
-    hora_base = agora.hour + (agora.minute / 60.0)
-
-# Trava de segurança: nunca divide por menos de 1 hora para não explodir a projeção
-horas_passadas_prod = max(1.0, hora_base)
-prev_prod = (prod_hoje_calc / horas_passadas_prod) * 24
-
-horas_produtivas = sum((1.0 if h > agora.hour else (1.0 - (agora.minute / 60.0))) * (0.0 if 0 <= h < 8 and agora.weekday() in (0, 6) else (6.25 / 8.0)) for h in range(agora.hour, 24))
-cap_maxima_restante = horas_produtivas * 500.0
-
-total_veiculos_fisicos = sum(dados_patio.get(k, {}).get("veiculos", 0) for k in ["00", "01", "FC"]) if dados_patio else 0
-vol_patio_disponivel = sum(dados_patio.get(k, {}).get("peso", 0.0) for k in ["00", "01", "FC"]) if dados_patio else 0.0
-
-# 🔥 TRAVA FÍSICA DO ARMAZÉM: A projeção agora é limitada pelo estoque existente!
-carga_projetada_restante = min(cap_maxima_restante, vol_patio_disponivel, estoque_total)
-
-prev_carr = vol_hoje + carga_projetada_restante
+# Resgate de Qualidade
+dados_maquinas = {"MS1": {}, "MS2": {}}
+if not df_qual.empty:
+    for _, r_q in df_qual.iterrows():
+        m_nome = str(r_q.get("MAQUINA", "")).strip().upper()
+        if m_nome in dados_maquinas:
+            dados_maquinas[m_nome] = {
+                "material": str(r_q.get("MATERIAL", "--")),
+                "alvura": safe_to_numeric(r_q.get("ALVURA", 0)),
+                "sujidade": safe_to_numeric(r_q.get("SUJIDADE", 0)),
+                "viscosidade": safe_to_numeric(r_q.get("VISCOSIDADE", 0)),
+                "ph": safe_to_numeric(r_q.get("PH", 0)),
+                "producao": safe_to_numeric(r_q.get("PROD_TOTAL", 0)),
+                "l1": safe_to_numeric(r_q.get("PROD_LINHA_1", 0)),
+                "l2": safe_to_numeric(r_q.get("PROD_LINHA_2", 0)),
+                "desclassificando": str(r_q.get("DESCLASSIFICANDO", "NAO")).upper() == "SIM"
+            }
 
 # ==============================================================================
 # CABEÇALHO SUPERIOR E PREVISÕES
 # ==============================================================================
-# 1. CABEÇALHO (LOGO E STATUS) - Sem texto redundante
 col_logo, col_status, col_btn = st.columns([3.5, 2.5, 1.2], vertical_alignment="center")
 
 with col_logo:
@@ -383,7 +335,7 @@ with col_status:
     st.markdown(f"""
         <div style="text-align: right;">
             <div style="color: #00D672; font-size: 0.85rem; font-weight: 800; display: flex; justify-content: flex-end; align-items: center; gap: 6px;">
-                <span style="font-size: 1.1rem;">🎯</span> Sistema Online
+                <span style="font-size: 1.1rem;">🎯</span> {ritmo_torre}
             </div>
             <div style="color: #94a3b8; font-size: 0.7rem; font-weight: 600; margin-top: 2px;">
                 Sincronizado: {ultima_att}
@@ -396,9 +348,9 @@ with col_btn:
         st.cache_data.clear()
         st.rerun()
 
-st.markdown("<br>", unsafe_allow_html=True) # Espaçamento entre cabeçalho e os blocos
+st.markdown("<br>", unsafe_allow_html=True)
 
-# 2. BLOCOS DE PREVISÕES (NEON CYBERPUNK - DE VOLTA À VIDA!)
+# BLOCOS DE PREVISÕES (NEON)
 html_previsoes = f"""
 <div class="prev-container">
     <div class="prev-card-prod">
@@ -415,10 +367,82 @@ html_previsoes = f"""
 """
 st.markdown(html_previsoes, unsafe_allow_html=True)
 
-# 3. OBSERVAÇÕES OPERACIONAIS
-if observacoes and observacoes.strip() not in ["", "None"]:
-    cor_bg, cor_border, cor_txt = ("#0d2417", "#00D672", "#00D672") if "Normal" in observacoes else ("#2b1111", "#E74C3C", "#ff9999")
-    st.markdown(f'<div style="background-color: {cor_bg}; border-left: 4px solid {cor_border}; padding: 10px 14px; margin-bottom: 12px; border-radius: 6px;"><div style="color: {cor_border}; font-size: 11px; font-weight: 800; text-transform: uppercase;">📋 Observação Operacional</div><div style="color: {cor_txt}; font-size: 12px; font-weight: 600; white-space: pre-wrap;">{observacoes}</div></div>', unsafe_allow_html=True)
+# ALERTAS OPERACIONAIS
+if not df_alertas.empty:
+    linhas_alt = []
+    tem_critico = False
+    for _, alt_row in df_alertas.iterrows():
+        txt_alt = str(alt_row.get("ALERTA", "")).strip()
+        nv_alt = str(alt_row.get("NIVEL", "")).strip().upper()
+        if txt_alt and "Normal" not in txt_alt:
+            linhas_alt.append(f"• {txt_alt}")
+            if nv_alt == "CRITICO": tem_critico = True
+
+    if linhas_alt:
+        cor_b = "#E74C3C" if tem_critico else "#FF9F1C"
+        bg_b = "#2b1111" if tem_critico else "#24180d"
+        txt_cor = "#ff9999" if tem_critico else "#ffd299"
+        corpo_alt = "<br>".join(linhas_alt[:4])
+        st.markdown(f"""
+            <div style="background-color: {bg_b}; border-left: 4px solid {cor_b}; padding: 10px 14px; margin-bottom: 12px; border-radius: 6px;">
+                <div style="color: {cor_b}; font-size: 11px; font-weight: 800; text-transform: uppercase;">🚨 Observações & Alertas Críticos</div>
+                <div style="color: {txt_cor}; font-size: 12px; font-weight: 600; margin-top: 4px;">{corpo_alt}</div>
+            </div>
+        """, unsafe_allow_html=True)
+
+# ==============================================================================
+# 🎯 BLOCO 0: META & BALANÇO ESTRATÉGICO ANUAL (31/12)
+# ==============================================================================
+hoje_dt = date.today()
+fim_ano = date(hoje_dt.year, 12, 31)
+dias_restantes = max(1, (fim_ano - hoje_dt).days)
+meta_teto_estoque = 3468.0
+
+# Base anual padrão integrada à nuvem
+carr_base_ano = 1356346.0
+prod_base_ano = 1358998.0
+ritmo_esperado_dia = 5200.0
+
+carr_ano_atual = carr_base_ano + vol_hoje
+prod_ano_atual = prod_base_ano + prod_hoje_calc
+excesso_estoque = max(0.0, estoque_total - meta_teto_estoque)
+ritmo_extra_dia = excesso_estoque / dias_restantes
+meta_diaria_carr = ritmo_esperado_dia + ritmo_extra_dia
+
+proj_prod_fechamento = prod_ano_atual + (dias_restantes * ritmo_esperado_dia)
+carr_futuro_nec = (estoque_total + (dias_restantes * ritmo_esperado_dia)) - meta_teto_estoque
+proj_carr_fechamento = carr_ano_atual + carr_futuro_nec
+
+cor_meta = "#00D672" if excesso_estoque <= 0 else ("#FF9F1C" if excesso_estoque <= 1000 else "#E74C3C")
+status_ritmo_meta = "DENTRO DA META" if excesso_estoque <= 0 else ("ATENÇÃO AO RITMO" if excesso_estoque <= 1000 else "FORA DA META")
+
+html_meta_anual = f"""
+<details class="master-box" style="border-left-color: {cor_meta};">
+    <summary>
+        <div class="master-metric-title">🎯 Balanço Estratégico Anual ({dias_restantes} dias até 31/12)</div>
+        <div class="master-metric-val">{carr_ano_atual:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">t Expedidas</span></div>
+        <div class="master-metric-sub" style="color: {cor_meta};">Meta Diária de Carregamento: {meta_diaria_carr:,.0f} t/dia ({status_ritmo_meta})</div>
+    </summary>
+    <div class="master-content">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+            <div style="background-color:#111c2e; border:1px solid #1c2b42; border-radius:8px; padding:10px;">
+                <div style="font-size:0.75rem; color:#38bdf8; font-weight:800;">EXPEDIÇÃO ANUAL</div>
+                <div style="font-size:1.3rem; font-weight:900; color:#fff;">{carr_ano_atual:,.0f} t</div>
+                <div style="font-size:0.7rem; color:#94a3b8;">Proj. 31/12: <b style="color:#38bdf8;">{proj_carr_fechamento:,.0f} t</b></div>
+            </div>
+            <div style="background-color:#111c2e; border:1px solid #1c2b42; border-radius:8px; padding:10px;">
+                <div style="font-size:0.75rem; color:#00D672; font-weight:800;">PRODUÇÃO ANUAL</div>
+                <div style="font-size:1.3rem; font-weight:900; color:#fff;">{prod_ano_atual:,.0f} t</div>
+                <div style="font-size:0.7rem; color:#94a3b8;">Proj. 31/12: <b style="color:#00D672;">{proj_prod_fechamento:,.0f} t</b></div>
+            </div>
+        </div>
+        <div style="background-color:#111c2e; border:1px solid #1c2b42; border-radius:8px; padding:10px; font-size:0.8rem; color:#94a3b8;">
+            🏁 <b>Meta Teto Virada 25/26:</b> 3.468 t (Excesso a queimar: <b style="color:{cor_meta};">{excesso_estoque:,.0f} t</b> / +{ritmo_extra_dia:,.0f} t/dia)
+        </div>
+    </div>
+</details>
+"""
+st.markdown(html_meta_anual.replace('\n', ''), unsafe_allow_html=True)
 
 # ==============================================================================
 # 📦 BLOCO 1: PÁTIO DE VEÍCULOS
@@ -427,43 +451,41 @@ html_patio = '<details class="master-box" style="border-left-color: #38bdf8;">'
 html_patio += f'<summary><div class="master-metric-title">🚛 Pátio da Fábrica (Tempo Real)</div><div class="master-metric-val">{total_veiculos_fisicos} <span style="font-size:1.1rem; color:#94a3b8;">Veículos Físicos</span></div><div class="master-metric-sub" style="color: #38bdf8;">Carga Disponível p/ Carregar: {vol_patio_disponivel:,.0f} t</div></summary>'
 html_patio += '<div class="master-content patio-grid">'
 
-if dados_patio:
-    blocos_patio = [("🚙 Prog/Chegando", "PR", "#94A3B8"), ("📋 Checklist", "00", "#E5B800"), ("🚛 Apoio", "01", "#E67E22"), ("✅ Fila", "FC", "#00D672"), ("📄 Termo SAP", "TR", "#3498DB")]
-    for tit, chv, cor in blocos_patio:
-        v_qtd = dados_patio.get(chv, {}).get("veiculos", 0)
-        v_ton = dados_patio.get(chv, {}).get("peso", 0.0)
-        html_patio += f"<div class='card-patio-sub' style='border-left-color: {cor};'><div class='card-patio-title' style='color: {cor};'>{tit}</div><div class='card-patio-qtd'>{int(v_qtd)} <span style='font-size:0.75rem; color:#94a3b8;'>veíc</span></div><div class='card-patio-ton'>{v_ton:,.0f} t</div></div>"
-else:
-    html_patio += '<div style="color:gray;">Sem dados de pátio.</div>'
+blocos_patio = [("🚙 Prog/Chegando", "PR", "#94A3B8"), ("📋 Checklist", "00", "#E5B800"), ("🚛 Apoio", "01", "#E67E22"), ("✅ Fila", "FC", "#00D672"), ("📄 Termo SAP", "TR", "#3498DB")]
+for tit, chv, cor in blocos_patio:
+    v_qtd = dados_patio.get(chv, {}).get("veiculos", 0)
+    v_ton = dados_patio.get(chv, {}).get("peso", 0.0)
+    html_patio += f"<div class='card-patio-sub' style='border-left-color: {cor};'><div class='card-patio-title' style='color: {cor};'>{tit}</div><div class='card-patio-qtd'>{int(v_qtd)} <span style='font-size:0.75rem; color:#94a3b8;'>veíc</span></div><div class='card-patio-ton'>{v_ton:,.0f} t</div></div>"
 
 html_patio += "</div></details>"
 st.markdown(html_patio, unsafe_allow_html=True)
 
 # ==============================================================================
-# 🏭 BLOCO 2: PRODUÇÃO DO DIA (COM L1, L2, ALVURA E PH)
+# 🏭 BLOCO 2: PRODUÇÃO DO DIA (MS1 / MS2)
 # ==============================================================================
 html_prod_content = ""
 
-for maq, q_dados, p_maq in [("MS1", q_ms1, prod_ms1), ("MS2", q_ms2, prod_ms2)]:
+for maq in ["MS1", "MS2"]:
+    q_dados = dados_maquinas.get(maq, {})
     if q_dados:
-        mat_maq = q_dados.get("material", q_dados.get("mat", "--"))
-        q_suj = safe_to_numeric(q_dados.get('sujidade', 0.0))
-        q_visc = safe_to_numeric(q_dados.get('viscosidade', 0.0))
-        q_teor = safe_to_numeric(q_dados.get('teor', 0.0))
-        q_alvura = safe_to_numeric(q_dados.get('alvura', 0.0))
-        q_ph = safe_to_numeric(q_dados.get('ph', 0.0))
-        
-        l1 = safe_to_numeric(q_dados.get('l1', 0.0))
-        l2 = safe_to_numeric(q_dados.get('l2', 0.0))
+        mat_maq = q_dados.get("material", "--")
+        p_maq = q_dados.get("producao", 0.0)
+        q_suj = q_dados.get('sujidade', 0.0)
+        q_visc = q_dados.get('viscosidade', 0.0)
+        q_alvura = q_dados.get('alvura', 0.0)
+        q_ph = q_dados.get('ph', 0.0)
+        l1 = q_dados.get('l1', 0.0)
+        l2 = q_dados.get('l2', 0.0)
+        desclass = q_dados.get("desclassificando", False)
         
         c_suj = "#00D672" if q_suj <= 2.5 else "#E74C3C"
         c_vis = "#00D672" if q_visc >= 650 else "#E74C3C"
-        c_teo = "#00D672" if q_teor >= 88.5 else "#E74C3C"
-        c_alv = "#38bdf8"
-        c_ph = "#38bdf8"
+        c_alv = "#00D672" if q_alvura >= 88.5 else "#E74C3C"
+        c_ph = "#00D672" if 5.5 <= q_ph <= 8.5 else "#E74C3C"
+        cor_card_borda = "#E74C3C" if desclass else "#1c2b42"
 
         html_prod_content += f"""
-        <div style='background-color: #111c2e; border: 1px solid #1c2b42; border-radius: 8px; padding: 12px; margin-bottom: 8px;'>
+        <div style='background-color: #111c2e; border: 1.5px solid {cor_card_borda}; border-radius: 8px; padding: 12px; margin-bottom: 8px;'>
             <div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;'>
                 <span style='color:#ffffff; font-weight:800; font-size:1rem;'>⚙️ {maq}</span>
                 <span style='color:#FF9F1C; font-weight:800; font-size:0.85rem;'>📦 MAT: {mat_maq}</span>
@@ -471,11 +493,15 @@ for maq, q_dados, p_maq in [("MS1", q_ms1, prod_ms1), ("MS2", q_ms2, prod_ms2)]:
             </div>
             
             <div style='display:flex; justify-content:flex-end; gap: 12px; margin-bottom: 10px; font-size: 0.75rem; color: #94a3b8; font-weight: 700;'>
-                <span>L1: <span style='color:#ffffff;'>{l1:,.0f} t</span></span>
-                <span>L2: <span style='color:#ffffff;'>{l2:,.0f} t</span></span>
+                <span>Linha A/C: <span style='color:#ffffff;'>{l1:,.0f} t</span></span>
+                <span>Linha B/D: <span style='color:#ffffff;'>{l2:,.0f} t</span></span>
             </div>
             
             <div style='display: flex; justify-content: space-between; text-align: center; border-top: 1px dashed #1c2b42; padding-top: 10px;'>
+                <div>
+                    <div style='font-size:0.65rem; color:#94a3b8; text-transform:uppercase;'>Alvura</div>
+                    <div style='font-size:0.95rem; font-weight:bold; color:{c_alv};'>{q_alvura:.2f}%</div>
+                </div>
                 <div>
                     <div style='font-size:0.65rem; color:#94a3b8; text-transform:uppercase;'>Sujidade</div>
                     <div style='font-size:0.95rem; font-weight:bold; color:{c_suj};'>{q_suj:.2f}</div>
@@ -485,16 +511,8 @@ for maq, q_dados, p_maq in [("MS1", q_ms1, prod_ms1), ("MS2", q_ms2, prod_ms2)]:
                     <div style='font-size:0.95rem; font-weight:bold; color:{c_vis};'>{q_visc:,.0f}</div>
                 </div>
                 <div>
-                    <div style='font-size:0.65rem; color:#94a3b8; text-transform:uppercase;'>Teor</div>
-                    <div style='font-size:0.95rem; font-weight:bold; color:{c_teo};'>{q_teor:.2f}%</div>
-                </div>
-                <div>
-                    <div style='font-size:0.65rem; color:#94a3b8; text-transform:uppercase;'>Alvura</div>
-                    <div style='font-size:0.95rem; font-weight:bold; color:{c_alv};'>{q_alvura:.2f}</div>
-                </div>
-                <div>
                     <div style='font-size:0.65rem; color:#94a3b8; text-transform:uppercase;'>pH</div>
-                    <div style='font-size:0.95rem; font-weight:bold; color:{c_ph};'>{q_ph:.2f}</div>
+                    <div style='font-size:0.95rem; font-weight:bold; color:{c_ph};'>{q_ph:.1f}</div>
                 </div>
             </div>
         </div>
@@ -507,7 +525,7 @@ html_prod_completo = f"""
     <summary>
         <div class="master-metric-title">🏭 Produção de Celulose</div>
         <div class="master-metric-val">{prod_hoje_calc:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div>
-        <div class="master-metric-sub" style="color: #94a3b8;">MS1: {prod_ms1:,.0f} t | MS2: {prod_ms2:,.0f} t</div>
+        <div class="master-metric-sub" style="color: #94a3b8;">MS1: {dados_maquinas['MS1'].get('producao', 0):,.0f} t | MS2: {dados_maquinas['MS2'].get('producao', 0):,.0f} t</div>
     </summary>
     <div class="master-content">
         {html_prod_content}
@@ -519,11 +537,15 @@ st.markdown(html_prod_completo.replace('\n', ''), unsafe_allow_html=True)
 # ==============================================================================
 # 🚚 BLOCO 3: EXPEDIÇÃO DO DIA & TURNOS
 # ==============================================================================
+agora_br = datetime.utcnow() - timedelta(hours=3)
+hoje_date = agora_br.date()
+ontem_date = hoje_date - timedelta(days=1)
+
 dados_exp_hoje = buscar_dados_turnos_historico(hoje_date)
 dados_exp_ontem = buscar_dados_turnos_historico(ontem_date)
 
 vol_exp_hoje = vol_hoje if vol_hoje > 0 else (dados_exp_hoje.get("total_dia", 0.0) if dados_exp_hoje else 0.0)
-vol_exp_ontem = dados_exp_ontem.get("total_dia", 0.0) if dados_exp_ontem else 0.0
+vol_exp_ontem = vol_ontem if vol_ontem > 0 else (dados_exp_ontem.get("total_dia", 0.0) if dados_exp_ontem else 0.0)
 
 html_hoje = "<div style='font-size:0.75rem; font-weight:800; color:#00D672; text-transform:uppercase; margin-bottom:10px; text-align:left;'>Turnos em Operação Hoje:</div>"
 if dados_exp_hoje and "turnos" in dados_exp_hoje:
@@ -603,7 +625,7 @@ st.markdown(html_exp_completo.replace('\n', ''), unsafe_allow_html=True)
 # 📦 BLOCO 4: ESTOQUE TOTAL E MATERIAIS
 # ==============================================================================
 html_est = '<details class="master-box" style="border-left-color: #9b59b6;">'
-html_est += f'<summary><div class="master-metric-title">📦 Estoque Físico no Armazém</div><div class="master-metric-val">{estoque_total:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div><div class="master-metric-sub" style="color: #9b59b6;">Distribuição por Material</div></summary>'
+html_est += f'<summary><div class="master-metric-title">📦 Estoque Físico no Armazém</div><div class="master-metric-val">{estoque_total:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div><div class="master-metric-sub" style="color: #9b59b6;">Status Transbordo: {status_transbordo}</div></summary>'
 html_est += '<div class="master-content">'
 
 if dados_segregados:
@@ -624,11 +646,9 @@ html_est += "</div></details>"
 st.markdown(html_est, unsafe_allow_html=True)
 
 # ==============================================================================
-# 🚜 BLOCO 5: FROTA
+# 🚜 BLOCO 5: FROTA (MANTIDO E PROTEGIDO)
 # ==============================================================================
 df_frota = carregar_dados_nuvem("Rodizio_Frota")
-equip_em_uso_agora = 0
-
 html_frota = '<details class="master-box" style="border-left-color: #E67E22;">'
 
 if not df_frota.empty:
@@ -639,8 +659,7 @@ if not df_frota.empty:
     col_equip = cols_upper.get("EQUIPAMENTO", df_frota.columns[2] if len(df_frota.columns) > 2 else df_frota.columns[0])
 
     turnos_frota = df_frota[col_t].dropna().unique().tolist()
-    
-    idx_sug = next((i for i, t in enumerate(turnos_frota) if ("00:00" in str(t) and 0 <= agora.hour < 8) or ("08:00" in str(t) and 8 <= agora.hour < 16) or ("16:00" in str(t) and 16 <= agora.hour <= 23)), 0)
+    idx_sug = next((i for i, t in enumerate(turnos_frota) if ("00:00" in str(t) and 0 <= agora_br.hour < 8) or ("08:00" in str(t) and 8 <= agora_br.hour < 16) or ("16:00" in str(t) and 16 <= agora_br.hour <= 23)), 0)
     turno_atual_str = turnos_frota[idx_sug] if turnos_frota else ""
     df_f_agora = df_frota[df_frota[col_t] == turno_atual_str] if turnos_frota else df_frota
     
@@ -651,7 +670,6 @@ if not df_frota.empty:
 
     html_frota += f'<summary><div class="master-metric-title">🚜 Equipamentos em Operação</div><div class="master-metric-val">{equip_em_uso_agora} <span style="font-size:1.1rem; color:#94a3b8;">Em Atividade Agora</span></div><div class="master-metric-sub" style="color: #E67E22;">Carregamento, Linhas e Talhas</div></summary>'
     html_frota += '<div class="master-content css-tabs">'
-    
     html_frota += '<div style="text-align: center; margin-bottom: 12px;">'
     html_frota += '<div style="color: #94a3b8; font-size: 0.85rem; font-weight: bold; margin-bottom: 8px;">Selecione o Turno / Janela:</div>'
     for i, t_str in enumerate(turnos_frota):
@@ -679,13 +697,13 @@ if not df_frota.empty:
         html_frota += '</div>'
     html_frota += '</div>'
 else:
-    html_frota += '<summary><div class="master-metric-title">🚜 Equipamentos</div></summary><div class="master-content"><div style="color:gray;">Aba Rodizio_Frota indisponível ou sem dados.</div></div>'
+    html_frota += '<summary><div class="master-metric-title">🚜 Equipamentos</div></summary><div class="master-content"><div style="color:gray;">Aba Rodizio_Frota indisponível.</div></div>'
 
 html_frota += '</details>'
 st.markdown(html_frota, unsafe_allow_html=True)
 
 # ==============================================================================
-# ⛽ BLOCO 6: CONSUMO GLP MENSAL
+# ⛽ BLOCO 6: CONSUMO GLP MENSAL (MANTIDO E PROTEGIDO)
 # ==============================================================================
 df_glp = carregar_dados_nuvem("Abastecimentos_GLP", cabecalho=None)
 html_glp = '<details class="master-box" style="border-left-color: #fd7e14;">'
