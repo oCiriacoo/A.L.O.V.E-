@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import urllib.parse
 import json
 import requests
@@ -15,7 +15,7 @@ st.set_page_config(
 )
 
 # ==============================================================================
-# 🎨 CSS AVANÇADO (CARDS CLICÁVEIS + GRÁFICOS DE COLUNA CSS)
+# 🎨 CSS AVANÇADO (CARDS CLICÁVEIS + PREVISÕES TOP + GRÁFICOS VERTICAIS)
 # ==============================================================================
 st.markdown("""
     <style>
@@ -28,6 +28,39 @@ st.markdown("""
         
         input[type="radio"] { display: none; }
         
+        /* Grid das Previsões no Topo */
+        .prev-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .prev-card {
+            background-color: #111c2e;
+            border: 1px solid #1c2b42;
+            border-radius: 10px;
+            padding: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+        }
+        .prev-card-title {
+            font-size: 0.75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .prev-card-val {
+            font-size: 1.6rem;
+            font-weight: 900;
+            line-height: 1.1;
+            margin-bottom: 2px;
+        }
+        .prev-card-sub {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            font-weight: 700;
+        }
+
         /* Mágica do Bloco Clicável (HTML details/summary) */
         details.master-box {
             background-color: #111c2e;
@@ -68,7 +101,7 @@ st.markdown("""
         .card-patio-qtd { font-size: 1.4rem; font-weight: 900; color: #ffffff; }
         .card-patio-ton { font-size: 0.85rem; color: #94a3b8; font-weight: 600; }
 
-        .tag-box { display: inline-block; padding: 6px 12px; margin: 3px; border-radius: 6px; font-weight: 800; font-size: 0.8rem; text-align: center; }
+        .tag-box { display: inline-block; padding: 6px 10px; margin: 3px; border-radius: 6px; font-weight: 800; font-size: 0.8rem; text-align: center; }
         .tag-op { background-color: #00D672; color: #0a101d; }
         .tag-standby { background-color: #E74C3C; color: #ffffff; }
         .tag-talha { background-color: #F39C12; color: #0a101d; }
@@ -88,14 +121,14 @@ SHEET_ID = "10FluiIwlynIlPDA74QI8mpHSIrAc-62H1hZNRBsvfCA"
 @st.cache_data(ttl=30)
 def carregar_dados_nuvem(worksheet_name: str, cabecalho=0):
     sheet_encoded = urllib.parse.quote(worksheet_name)
-    url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={sheet_encoded}"
+    url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet={sheet_encoded}&headers=1"
     try:
         df = pd.read_csv(url, header=cabecalho)
         df = df.dropna(how="all", axis=1).dropna(how="all", axis=0)
         return df
-    except Exception: return pd.DataFrame()
+    except Exception:
+        return pd.DataFrame()
 
-# 🔥 PROTEÇÃO ANTIBUG DE TONELAGEM
 def safe_to_numeric(val):
     if pd.isna(val) or val == "" or val is None: return 0.0
     if isinstance(val, (int, float)): return float(val)
@@ -106,7 +139,8 @@ def safe_to_numeric(val):
         except: return 0.0
 
 def descobrir_letras_turnos(data_alvo):
-    data_referencia = datetime(2026, 9, 22).date()
+    # Âncora oficial do ciclo 4x2
+    data_referencia = date(2026, 9, 22)
     dias_passados = (data_alvo - data_referencia).days
     turnos = {"08_16": "C", "16_00": "B", "madrugada": "D"}
     for letra, dia in [("C", (0 + dias_passados) % 6), ("B", (2 + dias_passados) % 6), ("A", (4 + dias_passados) % 6)]:
@@ -115,51 +149,72 @@ def descobrir_letras_turnos(data_alvo):
     return turnos
 
 @st.cache_data(ttl=60)
-def buscar_dados_turnos_direto():
+def buscar_dados_turnos_historico(data_alvo):
+    """Calcula os volumes segregados por turno para qualquer data (Hoje ou D-1)."""
     agora_br = datetime.utcnow() - timedelta(hours=3)
     hoje_date = agora_br.date()
-    turno_d_ativo = agora_br.weekday() not in (0, 6)
-    letras = descobrir_letras_turnos(hoje_date)
+    is_hoje = (data_alvo == hoje_date)
     
-    if agora_br.hour < 8: ativo_key = "t1" if turno_d_ativo else None
-    elif agora_br.hour < 16: ativo_key = "t2"
-    else: ativo_key = "t3"
+    letras = descobrir_letras_turnos(data_alvo)
+    
+    # Se for hoje, marca o turno corrente; se for ontem, nenhum fica com badge (ATIVO)
+    ativo_key = None
+    if is_hoje:
+        if agora_br.hour < 8: ativo_key = "t1"
+        elif agora_br.hour < 16: ativo_key = "t2"
+        else: ativo_key = "t3"
 
     try:
         url_csv = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=0"
-        resp = requests.get(url_csv, timeout=8)
+        resp = requests.get(url_csv, timeout=10)
         resp.encoding = 'utf-8'
         linhas = list(csv.reader(StringIO(resp.text)))
 
-        corte_08, corte_16, vol_atual = 0.0, 0.0, 0.0
-        hora_08 = agora_br.replace(hour=8, minute=0, second=0, microsecond=0)
-        hora_16 = agora_br.replace(hour=16, minute=0, second=0, microsecond=0)
+        corte_00, corte_08, corte_16, corte_fim = 0.0, 0.0, 0.0, 0.0
+        
+        hora_00 = datetime.combine(data_alvo, datetime.min.time())
+        hora_08 = hora_00.replace(hour=8)
+        hora_16 = hora_00.replace(hour=16)
+        hora_fim = hora_00.replace(hour=23, minute=59, second=59)
 
+        # Varredura cronológica
         for row in reversed(linhas[1:]):
             if len(row) > 3:
                 try:
                     dt_row = datetime.strptime(row[0].strip(), "%d/%m/%Y %H:%M:%S")
                     vol_linha = safe_to_numeric(row[3])
-                    if vol_atual == 0.0: vol_atual = vol_linha
-                    if corte_16 == 0.0 and dt_row <= hora_16 and dt_row.date() == hoje_date: corte_16 = vol_linha
-                    if corte_08 == 0.0 and dt_row <= hora_08 and dt_row.date() == hoje_date: corte_08 = vol_linha
-                except: continue
+                    
+                    if dt_row.date() == data_alvo:
+                        if corte_fim == 0.0 and dt_row <= hora_fim: corte_fim = vol_linha
+                        if corte_16 == 0.0 and dt_row <= hora_16: corte_16 = vol_linha
+                        if corte_08 == 0.0 and dt_row <= hora_08: corte_08 = vol_linha
+                        if corte_00 == 0.0 and dt_row <= hora_00: corte_00 = vol_linha
+                except:
+                    continue
 
-        vol_t1 = corte_08 if (corte_08 > 0 and turno_d_ativo) else 0.0
-        vol_t2 = max(0.0, corte_16 - corte_08) if agora_br.hour >= 16 else (max(0.0, vol_atual - corte_08) if agora_br.hour >= 8 else 0.0)
-        vol_t3 = max(0.0, vol_atual - corte_16) if agora_br.hour >= 16 else 0.0
+        vol_t1 = max(0.0, corte_08 - corte_00) if corte_08 > 0 else 0.0
+        
+        if is_hoje:
+            vol_t2 = max(0.0, corte_16 - corte_08) if agora_br.hour >= 16 else (max(0.0, corte_fim - corte_08) if agora_br.hour >= 8 else 0.0)
+            vol_t3 = max(0.0, corte_fim - corte_16) if agora_br.hour >= 16 else 0.0
+        else:
+            vol_t2 = max(0.0, corte_16 - corte_08) if corte_16 > 0 else 0.0
+            vol_t3 = max(0.0, corte_fim - corte_16) if corte_fim > 0 else 0.0
 
         turnos_exibir = []
-        if turno_d_ativo: turnos_exibir.append({"key": "t1", "letra": f"Turno {letras['madrugada']}", "vol": vol_t1, "horario": "00h - 08h"})
+        # Regra de negócio: Turno D só aparece se houver volume carregado
+        if vol_t1 > 0 or (is_hoje and agora_br.hour < 8 and vol_t1 > 0):
+            turnos_exibir.append({"key": "t1", "letra": f"Turno {letras['madrugada']}", "vol": vol_t1, "horario": "00h - 08h"})
+            
         turnos_exibir.append({"key": "t2", "letra": f"Turno {letras['08_16']}", "vol": vol_t2, "horario": "08h - 16h"})
         turnos_exibir.append({"key": "t3", "letra": f"Turno {letras['16_00']}", "vol": vol_t3, "horario": "16h - 00h"})
-        return {"ativo_key": ativo_key, "turnos": turnos_exibir}
-    except Exception: return None
+        
+        total_dia = vol_t1 + vol_t2 + vol_t3
+        return {"ativo_key": ativo_key, "turnos": turnos_exibir, "total_dia": total_dia}
+    except Exception:
+        return None
 
-# ==============================================================================
-# 🔥 FUNÇÃO MÁGICA: GRÁFICO DE COLUNAS VERTICAIS EM HTML PURO (ANTI-BUG)
-# ==============================================================================
-def build_vertical_chart(data, height=160):
+def build_vertical_chart(data, height=150):
     if not data: return ""
     max_v = max([d["value"] for d in data]) if max([d["value"] for d in data]) > 0 else 100
     html = f"<div style='display:flex; justify-content:space-evenly; align-items:flex-end; height:{height}px; border-bottom:1px solid #1c2b42; padding-bottom:0px; margin-top:15px;'>"
@@ -182,7 +237,6 @@ cache_dict = {str(row.iloc[0]).strip(): str(row.iloc[1]).strip() for _, row in d
 dados_patio = json.loads(cache_dict.get("dados_patio", "{}")) if cache_dict.get("dados_patio") else {}
 qualidade = json.loads(cache_dict.get("qualidade", "{}")) if cache_dict.get("qualidade") else {}
 dados_segregados = json.loads(cache_dict.get("dados_segregados", "{}")) if cache_dict.get("dados_segregados") else {}
-dados_turnos = buscar_dados_turnos_direto()
 
 vol_hoje = safe_to_numeric(cache_dict.get("vol_hoje", 0))
 estoque_total = safe_to_numeric(cache_dict.get("estoque_total", 0))
@@ -193,7 +247,11 @@ prod_ms1 = safe_to_numeric(qualidade.get("MS1", {}).get("producao", 0))
 prod_ms2 = safe_to_numeric(qualidade.get("MS2", {}).get("producao", 0))
 prod_hoje = prod_ms1 + prod_ms2
 
+# Cálculos dinâmicos
 agora = datetime.utcnow() - timedelta(hours=3)
+hoje_date = agora.date()
+ontem_date = hoje_date - timedelta(days=1)
+
 horas_passadas_prod = max(0.1, agora.hour + (agora.minute / 60.0))
 prev_prod = (prod_hoje / horas_passadas_prod) * 24
 
@@ -217,11 +275,28 @@ with col_ref:
         st.cache_data.clear()
         st.rerun()
 
+# ==============================================================================
+# 🎯 BLOCO EXCLUSIVO DE PREVISÕES (TOP CARD DUPLO)
+# ==============================================================================
+html_previsoes = f"""
+<div class="prev-container">
+    <div class="prev-card" style="border-left: 4px solid #E5B800;">
+        <div class="prev-card-title" style="color: #E5B800;">📈 Prev. Produção</div>
+        <div class="prev-card-val" style="color: #ffffff;">{prev_prod:,.0f} <span style="font-size:0.9rem; color:#94a3b8;">t</span></div>
+        <div class="prev-card-sub">Ritmo 24h Base MS1+MS2</div>
+    </div>
+    <div class="prev-card" style="border-left: 4px solid #00D672;">
+        <div class="prev-card-title" style="color: #00D672;">🎯 Prev. Expedição</div>
+        <div class="prev-card-val" style="color: #ffffff;">{prev_carr:,.0f} <span style="font-size:0.9rem; color:#94a3b8;">t</span></div>
+        <div class="prev-card-sub">Realizado + Cap. Pátio</div>
+    </div>
+</div>
+"""
+st.markdown(html_previsoes, unsafe_allow_html=True)
+
 if observacoes and observacoes.strip() not in ["", "None"]:
     cor_bg, cor_border, cor_txt = ("#0d2417", "#00D672", "#00D672") if "Normal" in observacoes else ("#2b1111", "#E74C3C", "#ff9999")
-    st.markdown(f'<div style="background-color: {cor_bg}; border-left: 4px solid {cor_border}; padding: 10px 14px; margin: 10px 0; border-radius: 6px;"><div style="color: {cor_border}; font-size: 11px; font-weight: 800; text-transform: uppercase;">📋 Observação Operacional</div><div style="color: {cor_txt}; font-size: 12px; font-weight: 600; white-space: pre-wrap;">{observacoes}</div></div>', unsafe_allow_html=True)
-
-st.write("")
+    st.markdown(f'<div style="background-color: {cor_bg}; border-left: 4px solid {cor_border}; padding: 10px 14px; margin-bottom: 12px; border-radius: 6px;"><div style="color: {cor_border}; font-size: 11px; font-weight: 800; text-transform: uppercase;">📋 Observação Operacional</div><div style="color: {cor_txt}; font-size: 12px; font-weight: 600; white-space: pre-wrap;">{observacoes}</div></div>', unsafe_allow_html=True)
 
 # ==============================================================================
 # 📦 BLOCO 1: PÁTIO DE VEÍCULOS
@@ -243,10 +318,10 @@ html_patio += "</div></details>"
 st.markdown(html_patio, unsafe_allow_html=True)
 
 # ==============================================================================
-# 🏭 BLOCO 2: PRODUÇÃO DO DIA
+# 🏭 BLOCO 2: PRODUÇÃO DO DIA (Sem Previsão no Título)
 # ==============================================================================
 html_prod = '<details class="master-box" style="border-left-color: #E5B800;">'
-html_prod += f'<summary><div class="master-metric-title">🏭 Produção de Celulose (Hoje)</div><div class="master-metric-val">{prod_hoje:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div><div class="master-metric-sub" style="color: #E5B800;">Previsão de Fechamento: {prev_prod:,.0f} t</div></summary>'
+html_prod += f'<summary><div class="master-metric-title">🏭 Produção de Celulose</div><div class="master-metric-val">{prod_hoje:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div><div class="master-metric-sub" style="color: #94a3b8;">MS1: {prod_ms1:,.0f} t | MS2: {prod_ms2:,.0f} t</div></summary>'
 html_prod += '<div class="master-content">'
 
 if qualidade:
@@ -268,10 +343,23 @@ html_prod += "</div></details>"
 st.markdown(html_prod, unsafe_allow_html=True)
 
 # ==============================================================================
-# 🚚 BLOCO 3: EXPEDIÇÃO DO DIA & TURNOS (GRÁFICO COLUNAS VERTICAIS)
+# 🚚 BLOCO 3: EXPEDIÇÃO DO DIA & TURNOS (COM SELETOR HOJE / D-1)
 # ==============================================================================
-html_exp = '<details class="master-box" style="border-left-color: #00D672;">'
-html_exp += f'<summary><div class="master-metric-title">🚛 Expedição Realizada (Hoje)</div><div class="master-metric-val">{vol_hoje:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div><div class="master-metric-sub" style="color: #00D672;">Previsão de Fechamento: {prev_carr:,.0f} t</div></summary>'
+# Seletor discreto de período
+col_exp_label, col_exp_btn = st.columns([2.2, 1.8])
+with col_exp_label:
+    st.markdown("<div style='font-size: 0.85rem; font-weight: 800; color: #94a3b8; padding-top: 6px;'>VISUALIZAÇÃO DE EXPEDIÇÃO:</div>", unsafe_allow_html=True)
+with col_exp_btn:
+    visao_exp = st.segmented_control("", ["Hoje", "Ontem (D-1)"], default="Hoje", label_visibility="collapsed")
+
+data_consulta = hoje_date if visao_exp == "Hoje" else ontem_date
+dados_turnos = buscar_dados_turnos_historico(data_consulta)
+
+vol_titulo = vol_hoje if visao_exp == "Hoje" else (dados_turnos.get("total_dia", 0.0) if dados_turnos else 0.0)
+sub_titulo = "Volume Acumulado Hoje" if visao_exp == "Hoje" else f"Volume Consolidado em {ontem_date.strftime('%d/%m')}"
+
+html_exp = '<details class="master-box" style="border-left-color: #00D672;" open>'
+html_exp += f'<summary><div class="master-metric-title">🚛 Expedição Realizada ({visao_exp})</div><div class="master-metric-val">{vol_titulo:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div><div class="master-metric-sub" style="color: #00D672;">{sub_titulo}</div></summary>'
 html_exp += '<div class="master-content">'
 
 if dados_turnos and "turnos" in dados_turnos:
@@ -292,7 +380,7 @@ if dados_turnos and "turnos" in dados_turnos:
             "label": t['letra'],
             "value": t['vol'],
             "text": f"{t['vol']:,.0f} t",
-            "color": "#FF9F1C" if is_atv else "#3498DB"
+            "color": "#FF9F1C" if is_atv else "#00D672"
         })
     html_exp += '</div>'
     html_exp += build_vertical_chart(chart_data_exp)
@@ -303,7 +391,7 @@ html_exp += "</div></details>"
 st.markdown(html_exp, unsafe_allow_html=True)
 
 # ==============================================================================
-# 📦 BLOCO 4: ESTOQUE TOTAL E MATERIAIS (GRÁFICO COLUNAS VERTICAIS)
+# 📦 BLOCO 4: ESTOQUE TOTAL E MATERIAIS
 # ==============================================================================
 html_est = '<details class="master-box" style="border-left-color: #9b59b6;">'
 html_est += f'<summary><div class="master-metric-title">📦 Estoque Físico no Armazém</div><div class="master-metric-val">{estoque_total:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div><div class="master-metric-sub" style="color: #9b59b6;">Distribuição por Material</div></summary>'
@@ -327,7 +415,7 @@ html_est += "</div></details>"
 st.markdown(html_est, unsafe_allow_html=True)
 
 # ==============================================================================
-# 🚜 BLOCO 5: FROTA (TABS NATIVAS CENTRALIZADAS EM CSS)
+# 🚜 BLOCO 5: FROTA (CORRIGIDO PARA RECONHECER TODOS OS EQUIPAMENTOS)
 # ==============================================================================
 df_frota = carregar_dados_nuvem("Rodizio_Frota")
 equip_em_uso_agora = 0
@@ -335,19 +423,25 @@ equip_em_uso_agora = 0
 html_frota = '<details class="master-box" style="border-left-color: #E67E22;">'
 
 if not df_frota.empty:
-    col_t = "TURNO_JANELA" if "TURNO_JANELA" in df_frota.columns else df_frota.columns[0]
+    # Identificação flexível das colunas para evitar incompatibilidade de cabeçalho
+    cols_upper = {str(c).strip().upper(): c for c in df_frota.columns}
+    col_t = cols_upper.get("TURNO_JANELA", df_frota.columns[0])
+    col_posto = cols_upper.get("POSTO", df_frota.columns[1] if len(df_frota.columns) > 1 else df_frota.columns[0])
+    col_status = cols_upper.get("STATUS_RODIZIO", cols_upper.get("STATUS", df_frota.columns[-1]))
+    col_equip = cols_upper.get("EQUIPAMENTO", df_frota.columns[2] if len(df_frota.columns) > 2 else df_frota.columns[0])
+
     turnos_frota = df_frota[col_t].dropna().unique().tolist()
     
     idx_sug = next((i for i, t in enumerate(turnos_frota) if ("00:00" in str(t) and 0 <= agora.hour < 8) or ("08:00" in str(t) and 8 <= agora.hour < 16) or ("16:00" in str(t) and 16 <= agora.hour <= 23)), 0)
     turno_atual_str = turnos_frota[idx_sug] if turnos_frota else ""
-    df_f_agora = df_frota[df_frota[col_t] == turno_atual_str]
+    df_f_agora = df_frota[df_frota[col_t] == turno_atual_str] if turnos_frota else df_frota
     
-    op1 = df_f_agora[(df_f_agora["POSTO"].astype(str).str.contains("CARREG", case=False)) & (df_f_agora["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]
-    op2 = df_f_agora[(df_f_agora["POSTO"].astype(str).str.contains("LINHA", case=False)) & (df_f_agora["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]
-    op3 = df_f_agora[(df_f_agora["POSTO"].astype(str).str.contains("TALHA", case=False) | df_f_agora["EQUIPAMENTO"].astype(str).str.contains("TALHA", case=False)) & (df_f_agora["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]
+    op1 = df_f_agora[(df_f_agora[col_posto].astype(str).str.contains("CARREG", case=False, na=False)) & (df_f_agora[col_status].astype(str).str.contains("OPERA", case=False, na=False))]
+    op2 = df_f_agora[(df_f_agora[col_posto].astype(str).str.contains("LINHA", case=False, na=False)) & (df_f_agora[col_status].astype(str).str.contains("OPERA", case=False, na=False))]
+    op3 = df_f_agora[(df_f_agora[col_posto].astype(str).str.contains("TALHA", case=False, na=False) | df_f_agora[col_equip].astype(str).str.contains("TALHA", case=False, na=False)) & (df_f_agora[col_status].astype(str).str.contains("OPERA", case=False, na=False))]
     equip_em_uso_agora = len(op1) + len(op2) + len(op3)
 
-    html_frota += f'<summary><div class="master-metric-title">🚜 Equipamentos em Operação</div><div class="master-metric-val">{equip_em_uso_agora} <span style="font-size:1.1rem; color:#94a3b8;">Neste Exato Momento</span></div><div class="master-metric-sub" style="color: #E67E22;">Contempla Empilhadeiras e Talhas</div></summary>'
+    html_frota += f'<summary><div class="master-metric-title">🚜 Equipamentos em Operação</div><div class="master-metric-val">{equip_em_uso_agora} <span style="font-size:1.1rem; color:#94a3b8;">Em Atividade Agora</span></div><div class="master-metric-sub" style="color: #E67E22;">Carregamento, Linhas e Talhas</div></summary>'
     html_frota += '<div class="master-content css-tabs">'
     
     html_frota += '<div style="text-align: center; margin-bottom: 12px;">'
@@ -359,10 +453,10 @@ if not df_frota.empty:
     
     for i, t_str in enumerate(turnos_frota):
         df_t = df_frota[df_frota[col_t] == t_str]
-        carr = df_t[(df_t["POSTO"].astype(str).str.contains("CARREG", case=False)) & (df_t["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
-        linha = df_t[(df_t["POSTO"].astype(str).str.contains("LINHA", case=False)) & (df_t["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
-        talhas = df_t[(df_t["POSTO"].astype(str).str.contains("TALHA", case=False) | df_t["EQUIPAMENTO"].astype(str).str.contains("TALHA", case=False)) & (df_t["STATUS_RODIZIO"].astype(str).str.contains("OPERA", case=False))]["EQUIPAMENTO"].tolist()
-        paradas = df_t[df_t["STATUS_RODIZIO"].astype(str).str.contains("STAND", case=False)]["EQUIPAMENTO"].tolist()
+        carr = df_t[(df_t[col_posto].astype(str).str.contains("CARREG", case=False, na=False)) & (df_t[col_status].astype(str).str.contains("OPERA", case=False, na=False))][col_equip].tolist()
+        linha = df_t[(df_t[col_posto].astype(str).str.contains("LINHA", case=False, na=False)) & (df_t[col_status].astype(str).str.contains("OPERA", case=False, na=False))][col_equip].tolist()
+        talhas = df_t[(df_t[col_posto].astype(str).str.contains("TALHA", case=False, na=False) | df_t[col_equip].astype(str).str.contains("TALHA", case=False, na=False)) & (df_t[col_status].astype(str).str.contains("OPERA", case=False, na=False))][col_equip].tolist()
+        paradas = df_t[df_t[col_status].astype(str).str.contains("STAND|PARAD|MANUT", case=False, na=False)][col_equip].tolist()
 
         str_carr = " ".join([f"<span class='tag-box tag-op'>{t}</span>" for t in carr]) if carr else "<span style='color:gray; font-size:0.8rem;'>Nenhum</span>"
         str_linha = " ".join([f"<span class='tag-box tag-op'>{t}</span>" for t in linha]) if linha else "<span style='color:gray; font-size:0.8rem;'>Nenhum</span>"
@@ -377,18 +471,15 @@ if not df_frota.empty:
         html_frota += '</div>'
     html_frota += '</div>'
 else:
-    html_frota += '<summary><div class="master-metric-title">🚜 Equipamentos</div></summary><div class="master-content"><div style="color:gray;">Planilha indisponível.</div></div>'
+    html_frota += '<summary><div class="master-metric-title">🚜 Equipamentos</div></summary><div class="master-content"><div style="color:gray;">Aba Rodizio_Frota indisponível ou sem dados.</div></div>'
 
 html_frota += '</details>'
 st.markdown(html_frota, unsafe_allow_html=True)
 
 # ==============================================================================
-# ⛽ BLOCO 6: CONSUMO GLP MENSAL (GRÁFICO COLUNAS VERTICAIS)
+# ⛽ BLOCO 6: CONSUMO GLP MENSAL
 # ==============================================================================
 df_glp = carregar_dados_nuvem("Abastecimentos_GLP", cabecalho=None)
-total_glp_recente = 0
-mes_recente = "--/----"
-
 html_glp = '<details class="master-box" style="border-left-color: #fd7e14;">'
 
 if not df_glp.empty and len(df_glp.columns) >= 8:
@@ -404,7 +495,7 @@ if not df_glp.empty and len(df_glp.columns) >= 8:
         meses_disp = df_g["MES_ANO"].dropna().unique().tolist()
         if meses_disp:
             meses_disp.sort(key=lambda x: datetime.strptime(x, "%m/%Y"))
-            mes_recente = meses_disp[-1] # Pega o último mês (mês atual)
+            mes_recente = meses_disp[-1]
             df_mes_recente = df_g[df_g["MES_ANO"] == mes_recente]
             total_glp_recente = df_mes_recente["KG_NUM"].sum()
 
