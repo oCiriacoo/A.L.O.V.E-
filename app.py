@@ -369,7 +369,7 @@ html_prod += "</div></details>"
 st.markdown(html_prod, unsafe_allow_html=True)
 
 # ==============================================================================
-# 🚚 BLOCO 3: EXPEDIÇÃO DO DIA & TURNOS (CORRIGIDO SEM BUG DE TEXTO CRU)
+# 🚚 BLOCO 3: EXPEDIÇÃO DO DIA & TURNOS (HTML PURO BLINDADO)
 # ==============================================================================
 dados_exp_hoje = buscar_dados_turnos_historico(hoje_date)
 dados_exp_ontem = buscar_dados_turnos_historico(ontem_date)
@@ -377,68 +377,86 @@ dados_exp_ontem = buscar_dados_turnos_historico(ontem_date)
 vol_exp_hoje = vol_hoje if vol_hoje > 0 else (dados_exp_hoje.get("total_dia", 0.0) if dados_exp_hoje else 0.0)
 vol_exp_ontem = dados_exp_ontem.get("total_dia", 0.0) if dados_exp_ontem else 0.0
 
-# 1. Renderiza o cabeçalho no estilo master-box nativo
-html_exp_topo = (
-    '<details class="master-box" style="border-left-color: #00D672;" open>'
-    '<summary>'
-    '<div class="master-metric-title">🚛 Expedição Realizada</div>'
-    f'<div class="master-metric-val">{vol_exp_hoje:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div>'
-    f'<div class="master-metric-sub" style="color: #00D672;">Consolidado Ontem (D-1): {vol_exp_ontem:,.0f} t</div>'
-    '</summary>'
-    '<div class="master-content">'
-)
-st.markdown(html_exp_topo, unsafe_allow_html=True)
-
-# 2. Seletor de visualização (Hoje / D-1) direto dentro do bloco
-col_spc1, col_sel, col_spc2 = st.columns([1, 2, 1])
-with col_sel:
-    periodo_sel = st.segmented_control(
-        "Período de Expedição",
-        ["Hoje", "Ontem (D-1)"],
-        default="Hoje",
-        label_visibility="collapsed"
-    )
-
-# 3. Define qual dataset exibir
-dados_ativos = dados_exp_hoje if periodo_sel == "Hoje" else dados_exp_ontem
-sub_tit = "Turnos em Operação Hoje:" if periodo_sel == "Hoje" else f"Fechamento de Ontem ({ontem_date.strftime('%d/%m')}):"
-cor_tema = "#00D672" if periodo_sel == "Hoje" else "#38bdf8"
-
-st.markdown(f"<div style='font-size:0.75rem; font-weight:800; color:{cor_tema}; text-transform:uppercase; margin: 8px 0 6px 0;'>{sub_tit}</div>", unsafe_allow_html=True)
-
-if dados_ativos and "turnos" in dados_ativos:
-    ativo_key = dados_ativos.get("ativo_key")
-    cards_html = "<div style='display:flex; gap:6px; margin-bottom:8px;'>"
-    chart_data = []
-
-    for t in dados_ativos["turnos"]:
+# --- CONTEÚDO HOJE ---
+html_hoje = "<div style='font-size:0.75rem; font-weight:800; color:#00D672; text-transform:uppercase; margin-bottom:10px; text-align:left;'>Turnos em Operação Hoje:</div>"
+if dados_exp_hoje and "turnos" in dados_exp_hoje:
+    ativo_key = dados_exp_hoje.get("ativo_key")
+    html_hoje += "<div style='display:flex; gap:6px; margin-bottom:8px;'>"
+    chart_data_hoje = []
+    for t in dados_exp_hoje["turnos"]:
         is_atv = (t["key"] == ativo_key)
         cor_b = "#FF9F1C" if is_atv else "#1c2b42"
         cor_txt = "#FF9F1C" if is_atv else "#ffffff"
         sub_txt = f"{t['horario']} (ATIVO)" if is_atv else t['horario']
         
-        cards_html += (
-            f"<div style='flex:1; background-color:#111c2e; border:1.5px solid {cor_b}; border-radius:8px; padding:8px; text-align:center;'>"
-            f"<div style='font-size:0.75rem; font-weight:800; color:{cor_txt};'>{t['letra']}</div>"
-            f"<div style='font-size:1.1rem; font-weight:900; color:#ffffff;'>{t['vol']:,.0f} t</div>"
-            f"<div style='font-size:0.65rem; color:#94a3b8;'>{sub_txt}</div>"
-            f"</div>"
-        )
-        chart_data.append({
-            "label": t['letra'],
-            "value": t['vol'],
-            "text": f"{t['vol']:,.0f} t",
-            "color": "#FF9F1C" if is_atv else cor_tema
-        })
-
-    cards_html += "</div>"
-    st.markdown(cards_html, unsafe_allow_html=True)
-    st.markdown(build_vertical_chart(chart_data), unsafe_allow_html=True)
+        html_hoje += f"<div style='flex:1; background-color:#111c2e; border:1.5px solid {cor_b}; border-radius:8px; padding:8px; text-align:center;'><div style='font-size:0.75rem; font-weight:800; color:{cor_txt};'>{t['letra']}</div><div style='font-size:1.1rem; font-weight:900; color:#ffffff;'>{t['vol']:,.0f} t</div><div style='font-size:0.65rem; color:#94a3b8;'>{sub_txt}</div></div>"
+        chart_data_hoje.append({"label": t['letra'], "value": t['vol'], "text": f"{t['vol']:,.0f} t", "color": "#FF9F1C" if is_atv else "#00D672"})
+    html_hoje += "</div>"
+    html_hoje += build_vertical_chart(chart_data_hoje)
 else:
-    st.markdown("<div style='color:gray; padding: 10px 0;'>Sem dados de expedição disponíveis para o período.</div>", unsafe_allow_html=True)
+    html_hoje += "<div style='color:gray; text-align:left;'>Aguardando dados de hoje...</div>"
 
-# 4. Fecha as tags do card
-st.markdown("</div></details>", unsafe_allow_html=True)
+# --- CONTEÚDO ONTEM (D-1) ---
+html_ontem = f"<div style='font-size:0.75rem; font-weight:800; color:#38bdf8; text-transform:uppercase; margin-bottom:10px; text-align:left;'>Fechamento de Ontem ({ontem_date.strftime('%d/%m')}):</div>"
+if dados_exp_ontem and "turnos" in dados_exp_ontem:
+    html_ontem += "<div style='display:flex; gap:6px; margin-bottom:8px;'>"
+    chart_data_ontem = []
+    for t in dados_exp_ontem["turnos"]:
+        html_ontem += f"<div style='flex:1; background-color:#111c2e; border:1.5px solid #1c2b42; border-radius:8px; padding:8px; text-align:center;'><div style='font-size:0.75rem; font-weight:800; color:#38bdf8;'>{t['letra']}</div><div style='font-size:1.1rem; font-weight:900; color:#ffffff;'>{t['vol']:,.0f} t</div><div style='font-size:0.65rem; color:#94a3b8;'>{t['horario']}</div></div>"
+        chart_data_ontem.append({"label": t['letra'], "value": t['vol'], "text": f"{t['vol']:,.0f} t", "color": "#38bdf8"})
+    html_ontem += "</div>"
+    html_ontem += build_vertical_chart(chart_data_ontem)
+else:
+    html_ontem += "<div style='color:gray; text-align:left;'>Sem dados consolidados de ontem.</div>"
+
+# --- MONTAGEM HTML/CSS FINAL ---
+html_exp_completo = f"""
+<details class="master-box" style="border-left-color: #00D672;" open>
+    <summary>
+        <div class="master-metric-title">🚛 Expedição Realizada</div>
+        <div class="master-metric-val">{vol_exp_hoje:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div>
+        <div class="master-metric-sub" style="color: #00D672;">Consolidado Ontem (D-1): {vol_exp_ontem:,.0f} t</div>
+    </summary>
+    <div class="master-content css-tabs-exp">
+        <div style="text-align: center; margin-bottom: 16px;">
+            <input type="radio" name="exp_tabs" id="tab_ontem">
+            <label for="tab_ontem" class="lbl-ontem">⏮️ Ontem (D-1)</label>
+            
+            <input type="radio" name="exp_tabs" id="tab_hoje" checked>
+            <label for="tab_hoje" class="lbl-hoje">📅 Hoje</label>
+            
+            <div class="tab-content-exp" id="content_ontem" style="margin-top: 14px;">
+                {html_ontem}
+            </div>
+            
+            <div class="tab-content-exp" id="content_hoje" style="margin-top: 14px;">
+                {html_hoje}
+            </div>
+        </div>
+    </div>
+</details>
+<style>
+    .css-tabs-exp label {{
+        display: inline-block; padding: 6px 16px; background-color: #162438; color: #94a3b8; 
+        border-radius: 6px; font-size: 0.85rem; font-weight: 800; margin: 0 4px; 
+        cursor: pointer; border: 1px solid #1c2b42; transition: 0.2s;
+    }}
+    .css-tabs-exp input[type="radio"]#tab_ontem:checked + label.lbl-ontem {{
+        background-color: #38bdf8; color: #0a101d; border-color: #38bdf8;
+    }}
+    .css-tabs-exp input[type="radio"]#tab_hoje:checked + label.lbl-hoje {{
+        background-color: #00D672; color: #0a101d; border-color: #00D672;
+    }}
+    .tab-content-exp {{ display: none; animation: fadeIn 0.3s ease; }}
+    #tab_ontem:checked ~ #content_ontem {{ display: block; }}
+    #tab_hoje:checked ~ #content_hoje {{ display: block; }}
+</style>
+"""
+
+# Limpeza de quebras de linha para o Streamlit não transformar em bloco de código Markdown
+html_exp_completo = html_exp_completo.replace('\n', '')
+
+st.markdown(html_exp_completo, unsafe_allow_html=True)
 
 # ==============================================================================
 # 📦 BLOCO 4: ESTOQUE TOTAL E MATERIAIS
