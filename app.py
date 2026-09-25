@@ -254,7 +254,101 @@ def build_vertical_chart(data, height=150):
     lbl_html += "</div>"
     return html + lbl_html
 
+# ==============================================================================
+# 🔥 RESGATE DOS DADOS DA NUVEM & CÁLCULOS (MOTOR BLINDADO CUMULATIVO)
+# ==============================================================================
+df_cache = carregar_dados_nuvem("Cache_Painel", cabecalho=0)
+cache_dict = {str(row.iloc[0]).strip(): str(row.iloc[1]).strip() for _, row in df_cache.iterrows()} if not df_cache.empty else {}
 
+def parse_robusto(texto):
+    if not texto or str(texto).strip() in ["", "None"]: return {}
+    texto_str = str(texto).strip()
+    try: return json.loads(texto_str)
+    except:
+        import ast
+        try: return ast.literal_eval(texto_str)
+        except: return {}
+
+# 1. Puxa os dados gerais fixos (AS VARIÁVEIS QUE FUGIRAM ESTÃO AQUI!)
+dados_patio = parse_robusto(cache_dict.get("dados_patio", "{}"))
+dados_segregados = parse_robusto(cache_dict.get("dados_segregados", "{}"))
+
+vol_hoje = safe_to_numeric(cache_dict.get("vol_hoje", 0))
+estoque_total = safe_to_numeric(cache_dict.get("estoque_total", 0))
+ultima_att = cache_dict.get("ultima_atualizacao", "Desconhecida")
+observacoes = cache_dict.get("observacoes", "")
+
+# 2. 🧠 LÓGICA CUMULATIVA PARA A QUALIDADE E PRODUÇÃO (FOGE DO RESET DO SAP)
+agora = datetime.utcnow() - timedelta(hours=3)
+hoje_date = agora.date()
+ontem_date = hoje_date - timedelta(days=1)
+
+acumuladores = {
+    "MS1": {"acumulado_prod": 0.0, "acumulado_l1": 0.0, "acumulado_l2": 0.0, "last_prod": 0.0, "last_l1": 0.0, "last_l2": 0.0},
+    "MS2": {"acumulado_prod": 0.0, "acumulado_l1": 0.0, "acumulado_l2": 0.0, "last_prod": 0.0, "last_l1": 0.0, "last_l2": 0.0}
+}
+
+qualidade_sintetizada = {}
+
+for _, row in df_cache.iterrows():
+    chave_str = str(row.iloc[0]).strip()
+    valor_str = str(row.iloc[1]).strip()
+    
+    # Se a linha contém os dados das máquinas, processa para acumular
+    if "MS1" in valor_str and "producao" in valor_str:
+        try: dt_row = datetime.strptime(chave_str[:10], "%d/%m/%Y").date()
+        except: dt_row = hoje_date
+            
+        if dt_row == hoje_date:
+            dados = parse_robusto(valor_str)
+            for maq in ["MS1", "MS2"]:
+                if maq in dados:
+                    maq_data = dados[maq]
+                    qualidade_sintetizada[maq] = maq_data
+                    
+                    cur_prod = safe_to_numeric(maq_data.get("producao", maq_data.get("prod", maq_data.get("peso", 0))))
+                    cur_l1 = safe_to_numeric(maq_data.get("l1", 0.0))
+                    cur_l2 = safe_to_numeric(maq_data.get("l2", 0.0))
+                    
+                    # 🚨 DETECTOR DE RESET (Queda maior que 20 tons significa que a máquina virou o lote)
+                    if cur_prod < acumuladores[maq]["last_prod"] and (acumuladores[maq]["last_prod"] - cur_prod) > 20:
+                        acumuladores[maq]["acumulado_prod"] += acumuladores[maq]["last_prod"]
+                        acumuladores[maq]["acumulado_l1"] += acumuladores[maq]["last_l1"]
+                        acumuladores[maq]["acumulado_l2"] += acumuladores[maq]["last_l2"]
+                    
+                    # Atualiza a memória com o valor lido agora
+                    acumuladores[maq]["last_prod"] = cur_prod
+                    acumuladores[maq]["last_l1"] = cur_l1
+                    acumuladores[maq]["last_l2"] = cur_l2
+
+# 3. Consolidação Final
+q_ms1 = qualidade_sintetizada.get("MS1", {})
+q_ms2 = qualidade_sintetizada.get("MS2", {})
+
+prod_ms1 = acumuladores["MS1"]["acumulado_prod"] + acumuladores["MS1"]["last_prod"]
+q_ms1["l1"] = acumuladores["MS1"]["acumulado_l1"] + acumuladores["MS1"]["last_l1"]
+q_ms1["l2"] = acumuladores["MS1"]["acumulado_l2"] + acumuladores["MS1"]["last_l2"]
+
+prod_ms2 = acumuladores["MS2"]["acumulado_prod"] + acumuladores["MS2"]["last_prod"]
+q_ms2["l1"] = acumuladores["MS2"]["acumulado_l1"] + acumuladores["MS2"]["last_l1"]
+q_ms2["l2"] = acumuladores["MS2"]["acumulado_l2"] + acumuladores["MS2"]["last_l2"]
+
+prod_hoje_calc = prod_ms1 + prod_ms2
+
+# Cálculos temporais e estimativas
+horas_passadas_prod = max(0.1, agora.hour + (agora.minute / 60.0))
+prev_prod = (prod_hoje_calc / horas_passadas_prod) * 24
+
+horas_produtivas = sum((1.0 if h > agora.hour else (1.0 - (agora.minute / 60.0))) * (0.0 if 0 <= h < 8 and agora.weekday() in (0, 6) else (6.25 / 8.0)) for h in range(agora.hour, 24))
+cap_maxima_restante = horas_produtivas * 500.0
+
+total_veiculos_fisicos = sum(dados_patio.get(k, {}).get("veiculos", 0) for k in ["00", "01", "FC", "TR"]) if dados_patio else 0
+vol_patio_disponivel = sum(dados_patio.get(k, {}).get("peso", 0.0) for k in ["00", "01", "FC"]) if dados_patio else 0.0
+prev_carr = vol_hoje + min(cap_maxima_restante, vol_patio_disponivel)
+
+# ==============================================================================
+# CABEÇALHO SUPERIOR
+# ==============================================================================
 # ==============================================================================
 # CABEÇALHO SUPERIOR
 # ==============================================================================
