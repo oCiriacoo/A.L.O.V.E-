@@ -21,7 +21,7 @@ st.set_page_config(
 st.markdown("""
     <style>
         .block-container {
-            padding-top: 1.5rem;
+            padding-top: 4rem;  /* <--- O SEGREDO ESTÁ AQUI: Desce toda a página! */
             padding-bottom: 2rem;
             padding-left: 0.8rem;
             padding-right: 0.8rem;
@@ -356,21 +356,18 @@ prev_carr = vol_hoje + min(cap_maxima_restante, vol_patio_disponivel)
 # ==============================================================================
 # CABEÇALHO SUPERIOR E PREVISÕES
 # ==============================================================================
-# 1. CABEÇALHO (LOGO, TEXTOS E BOTÃO)
-col_logo, col_desc, col_status, col_btn = st.columns([1.5, 2.5, 2.5, 1.2])
+# 1. CABEÇALHO (LOGO, TEXTOS E BOTÃO) - Agora com alinhamento central vertical!
+col_logo, col_desc, col_status, col_btn = st.columns([1.5, 2.5, 2.5, 1.2], vertical_alignment="center")
 
 with col_logo:
     try:
-        # Tenta carregar a imagem (Garanta que o arquivo chama logo_alove.png e está na mesma pasta)
         st.image("logo_alove.png", use_container_width=True)
     except:
-        # Texto de segurança caso a imagem falhe (Ajustado para não cortar)
-        st.markdown("<h3 style='margin-top: 5px; color:#00f3ff; font-style:italic; font-weight: 900;'>A.L.O.V.E.</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='margin:0; color:#00f3ff; font-style:italic; font-weight: 900;'>A.L.O.V.E.</h3>", unsafe_allow_html=True)
 
 with col_desc:
-    # Divisória vertical ajustada (sem cortar o texto)
     st.markdown("""
-        <div style="border-left: 2px solid #1c2b42; padding-left: 15px; margin-top: 5px;">
+        <div style="border-left: 2px solid #1c2b42; padding-left: 15px; height: 100%;">
             <span style="color: #e2e8f0; font-size: 0.85rem; font-weight: 600; line-height: 1.4; display: inline-block;">
                 Assistente Logístico Virtual<br>da Expedição
             </span>
@@ -378,9 +375,8 @@ with col_desc:
     """, unsafe_allow_html=True)
 
 with col_status:
-    # Status Online e Data da Sincronização
     st.markdown(f"""
-        <div style="text-align: right; margin-top: 5px;">
+        <div style="text-align: right;">
             <div style="color: #00D672; font-size: 0.85rem; font-weight: 800; display: flex; justify-content: flex-end; align-items: center; gap: 6px;">
                 <span style="font-size: 1.1rem;">🎯</span> Sistema Online
             </div>
@@ -391,14 +387,13 @@ with col_status:
     """, unsafe_allow_html=True)
 
 with col_btn:
-    st.markdown("<div style='margin-top: 8px;'></div>", unsafe_allow_html=True)
     if st.button("🔄 Atualizar", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
 
 st.markdown("<br>", unsafe_allow_html=True) # Espaçamento entre cabeçalho e os blocos
 
-# 2. BLOCOS DE PREVISÕES (NEON CYBERPUNK - RESTAURADOS!)
+# 2. BLOCOS DE PREVISÕES (NEON CYBERPUNK)
 html_previsoes = f"""
 <div class="prev-container">
     <div class="prev-card-prod">
@@ -418,8 +413,7 @@ st.markdown(html_previsoes, unsafe_allow_html=True)
 # 3. OBSERVAÇÕES OPERACIONAIS
 if observacoes and observacoes.strip() not in ["", "None"]:
     cor_bg, cor_border, cor_txt = ("#0d2417", "#00D672", "#00D672") if "Normal" in observacoes else ("#2b1111", "#E74C3C", "#ff9999")
-    st.markdown(f'<div style="background-color: {cor_bg}; border-left: 4px solid {cor_border}; padding: 10px 14px; margin-bottom: 12px; border-radius: 6px;"><div style="color: {cor_border}; font-size: 11px; font-weight: 800; text-transform: uppercase;">📋 Observação Operacional</div><div style="color: {cor_txt}; font-size: 12px; font-weight: 600; white-space: pre-wrap;">{observacoes}</div></div>', unsafe_allow_html=True)
-# ==============================================================================
+    st.markdown(f'<div style="background-color: {cor_bg}; border-left: 4px solid {cor_border}; padding: 10px 14px; margin-bottom: 12px; border-radius: 6px;"><div style="color: {cor_border}; font-size: 11px; font-weight: 800; text-transform: uppercase;">📋 Observação Operacional</div><div style="color: {cor_txt}; font-size: 12px; font-weight: 600; white-space: pre-wrap;">{observacoes}</div></div>', unsafe_allow_html=True)# ==============================================================================
 # 📦 BLOCO 1: PÁTIO DE VEÍCULOS
 # ==============================================================================
 html_patio = '<details class="master-box" style="border-left-color: #38bdf8;">'
