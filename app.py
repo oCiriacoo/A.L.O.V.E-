@@ -384,7 +384,30 @@ with col_btn:
 
 st.markdown("<br>", unsafe_allow_html=True) # Espaçamento entre cabeçalho e os blocos
 
-# (Mantenha o HTML das previsões e observações que vem logo abaixo...)# 📦 BLOCO 1: PÁTIO DE VEÍCULOS
+# 2. BLOCOS DE PREVISÕES (NEON CYBERPUNK - DE VOLTA À VIDA!)
+html_previsoes = f"""
+<div class="prev-container">
+    <div class="prev-card-prod">
+        <div class="prev-title">📈 Prev. Produção</div>
+        <div class="prev-val">{prev_prod:,.0f} <span style="font-size:0.9rem;">t</span></div>
+        <div class="prev-sub">Ritmo 24h Base MS1+MS2</div>
+    </div>
+    <div class="prev-card-carr">
+        <div class="prev-title">🎯 Prev. Expedição</div>
+        <div class="prev-val">{prev_carr:,.0f} <span style="font-size:0.9rem;">t</span></div>
+        <div class="prev-sub">Realizado + Cap. Pátio</div>
+    </div>
+</div>
+"""
+st.markdown(html_previsoes, unsafe_allow_html=True)
+
+# 3. OBSERVAÇÕES OPERACIONAIS
+if observacoes and observacoes.strip() not in ["", "None"]:
+    cor_bg, cor_border, cor_txt = ("#0d2417", "#00D672", "#00D672") if "Normal" in observacoes else ("#2b1111", "#E74C3C", "#ff9999")
+    st.markdown(f'<div style="background-color: {cor_bg}; border-left: 4px solid {cor_border}; padding: 10px 14px; margin-bottom: 12px; border-radius: 6px;"><div style="color: {cor_border}; font-size: 11px; font-weight: 800; text-transform: uppercase;">📋 Observação Operacional</div><div style="color: {cor_txt}; font-size: 12px; font-weight: 600; white-space: pre-wrap;">{observacoes}</div></div>', unsafe_allow_html=True)
+
+# ==============================================================================
+# 📦 BLOCO 1: PÁTIO DE VEÍCULOS
 # ==============================================================================
 html_patio = '<details class="master-box" style="border-left-color: #38bdf8;">'
 html_patio += f'<summary><div class="master-metric-title">🚛 Pátio da Fábrica (Tempo Real)</div><div class="master-metric-val">{total_veiculos_fisicos} <span style="font-size:1.1rem; color:#94a3b8;">Veículos Físicos</span></div><div class="master-metric-sub" style="color: #38bdf8;">Carga Disponível p/ Carregar: {vol_patio_disponivel:,.0f} t</div></summary>'
