@@ -261,35 +261,24 @@ df_cache = carregar_dados_nuvem("Cache_Painel", cabecalho=0)
 cache_dict = {str(row.iloc[0]).strip(): str(row.iloc[1]).strip() for _, row in df_cache.iterrows()} if not df_cache.empty else {}
 
 def parse_robusto(texto):
-    """Converte strings do Python com aspas simples em dicionários reais sem crashar."""
     if not texto or str(texto).strip() in ["", "None"]: return {}
     texto_str = str(texto).strip()
     try: return json.loads(texto_str)
     except:
+        import ast
         try: return ast.literal_eval(texto_str)
         except: return {}
 
-# 1. Puxa os dados normais usando o parse robusto
+# 1. Puxa os dados direto pelas CHAVES EXATAS que o Core envia!
 dados_patio = parse_robusto(cache_dict.get("dados_patio", "{}"))
 dados_segregados = parse_robusto(cache_dict.get("dados_segregados", "{}"))
+qualidade = parse_robusto(cache_dict.get("qualidade", "{}"))
 
-# 2. 🔎 Busca Inteligente da Qualidade (De baixo para cima na planilha)
-qualidade = {}
-for chave, valor in reversed(list(cache_dict.items())):
-    # Se o valor contiver 'MS1' e 'producao', sabemos que é a linha de qualidade, mesmo que a chave seja uma Data/Hora
-    if "MS1" in str(valor) and "producao" in str(valor):
-        q_parsed = parse_robusto(valor)
-        if q_parsed and "MS1" in q_parsed:
-            qualidade = q_parsed
-            break
-
-# 3. Extração das Variáveis
 vol_hoje = safe_to_numeric(cache_dict.get("vol_hoje", 0))
 estoque_total = safe_to_numeric(cache_dict.get("estoque_total", 0))
 ultima_att = cache_dict.get("ultima_atualizacao", "Desconhecida")
 observacoes = cache_dict.get("observacoes", "")
 
-# 4. Extração Certa da Produção
 q_ms1 = qualidade.get("MS1", qualidade.get("ms1", {}))
 q_ms2 = qualidade.get("MS2", qualidade.get("ms2", {}))
 
@@ -301,18 +290,7 @@ prod_hoje_calc = prod_ms1 + prod_ms2
 agora = datetime.utcnow() - timedelta(hours=3)
 hoje_date = agora.date()
 ontem_date = hoje_date - timedelta(days=1)
-
-horas_passadas_prod = max(0.1, agora.hour + (agora.minute / 60.0))
-prev_prod = (prod_hoje_calc / horas_passadas_prod) * 24
-
-horas_produtivas = sum((1.0 if h > agora.hour else (1.0 - (agora.minute / 60.0))) * (0.0 if 0 <= h < 8 and agora.weekday() in (0, 6) else (6.25 / 8.0)) for h in range(agora.hour, 24))
-cap_maxima_restante = horas_produtivas * 500.0
-
-total_veiculos_fisicos = sum(dados_patio.get(k, {}).get("veiculos", 0) for k in ["00", "01", "FC", "TR"]) if dados_patio else 0
-vol_patio_disponivel = sum(dados_patio.get(k, {}).get("peso", 0.0) for k in ["00", "01", "FC"]) if dados_patio else 0.0
-prev_carr = vol_hoje + min(cap_maxima_restante, vol_patio_disponivel)
-
-# ... (Deixe o Cabeçalho Superior e os Blocos Visuais que estão para baixo intactos) ...
+# ... (continue com as regras de horas produtivas como já está no seu código)
 # ==============================================================================
 # CABEÇALHO SUPERIOR
 # ==============================================================================
