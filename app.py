@@ -694,4 +694,4 @@ else:
 html_glp += '</details>'
 st.markdown(html_glp, unsafe_allow_html=True)
 
-st.markdown("<br><center><span style='color:#94a3b8; font-size: 0.80rem; font-weight: 600; letter-spacing: 0.5px;'>Developed by Cristiano Ciriaco</span></center>", unsafe_allow_html=True)
+st.markdown("<br><center><span style='color:#94a3b8; font-size: 0.80rem; font-weight: 600; letter-spacing: 0.5px;'>A.L.O.V.E - Mobile Developed by Cristiano Ciriaco</span></center>", unsafe_allow_html=True)
