@@ -361,7 +361,11 @@ cap_maxima_restante = horas_produtivas * 500.0
 
 total_veiculos_fisicos = sum(dados_patio.get(k, {}).get("veiculos", 0) for k in ["00", "01", "FC"]) if dados_patio else 0
 vol_patio_disponivel = sum(dados_patio.get(k, {}).get("peso", 0.0) for k in ["00", "01", "FC"]) if dados_patio else 0.0
-prev_carr = vol_hoje + min(cap_maxima_restante, vol_patio_disponivel)
+
+# 🔥 TRAVA FÍSICA DO ARMAZÉM: A projeção agora é limitada pelo estoque existente!
+carga_projetada_restante = min(cap_maxima_restante, vol_patio_disponivel, estoque_total)
+
+prev_carr = vol_hoje + carga_projetada_restante
 
 # ==============================================================================
 # CABEÇALHO SUPERIOR E PREVISÕES
