@@ -356,23 +356,14 @@ prev_carr = vol_hoje + min(cap_maxima_restante, vol_patio_disponivel)
 # ==============================================================================
 # CABEÇALHO SUPERIOR E PREVISÕES
 # ==============================================================================
-# 1. CABEÇALHO (LOGO, TEXTOS E BOTÃO) - Agora com alinhamento central vertical!
-col_logo, col_desc, col_status, col_btn = st.columns([1.5, 2.5, 2.5, 1.2], vertical_alignment="center")
+# 1. CABEÇALHO (LOGO E STATUS) - Sem texto redundante
+col_logo, col_status, col_btn = st.columns([3.5, 2.5, 1.2], vertical_alignment="center")
 
 with col_logo:
     try:
         st.image("logo_alove.png", use_container_width=True)
     except:
         st.markdown("<h3 style='margin:0; color:#00f3ff; font-style:italic; font-weight: 900;'>A.L.O.V.E.</h3>", unsafe_allow_html=True)
-
-with col_desc:
-    st.markdown("""
-        <div style="border-left: 2px solid #1c2b42; padding-left: 15px; height: 100%;">
-            <span style="color: #e2e8f0; font-size: 0.85rem; font-weight: 600; line-height: 1.4; display: inline-block;">
-                Assistente Logístico Virtual<br>da Expedição
-            </span>
-        </div>
-    """, unsafe_allow_html=True)
 
 with col_status:
     st.markdown(f"""
@@ -393,28 +384,7 @@ with col_btn:
 
 st.markdown("<br>", unsafe_allow_html=True) # Espaçamento entre cabeçalho e os blocos
 
-# 2. BLOCOS DE PREVISÕES (NEON CYBERPUNK)
-html_previsoes = f"""
-<div class="prev-container">
-    <div class="prev-card-prod">
-        <div class="prev-title">📈 Prev. Produção</div>
-        <div class="prev-val">{prev_prod:,.0f} <span style="font-size:0.9rem;">t</span></div>
-        <div class="prev-sub">Ritmo 24h Base MS1+MS2</div>
-    </div>
-    <div class="prev-card-carr">
-        <div class="prev-title">🎯 Prev. Expedição</div>
-        <div class="prev-val">{prev_carr:,.0f} <span style="font-size:0.9rem;">t</span></div>
-        <div class="prev-sub">Realizado + Cap. Pátio</div>
-    </div>
-</div>
-"""
-st.markdown(html_previsoes, unsafe_allow_html=True)
-
-# 3. OBSERVAÇÕES OPERACIONAIS
-if observacoes and observacoes.strip() not in ["", "None"]:
-    cor_bg, cor_border, cor_txt = ("#0d2417", "#00D672", "#00D672") if "Normal" in observacoes else ("#2b1111", "#E74C3C", "#ff9999")
-    st.markdown(f'<div style="background-color: {cor_bg}; border-left: 4px solid {cor_border}; padding: 10px 14px; margin-bottom: 12px; border-radius: 6px;"><div style="color: {cor_border}; font-size: 11px; font-weight: 800; text-transform: uppercase;">📋 Observação Operacional</div><div style="color: {cor_txt}; font-size: 12px; font-weight: 600; white-space: pre-wrap;">{observacoes}</div></div>', unsafe_allow_html=True)# ==============================================================================
-# 📦 BLOCO 1: PÁTIO DE VEÍCULOS
+# (Mantenha o HTML das previsões e observações que vem logo abaixo...)# 📦 BLOCO 1: PÁTIO DE VEÍCULOS
 # ==============================================================================
 html_patio = '<details class="master-box" style="border-left-color: #38bdf8;">'
 html_patio += f'<summary><div class="master-metric-title">🚛 Pátio da Fábrica (Tempo Real)</div><div class="master-metric-val">{total_veiculos_fisicos} <span style="font-size:1.1rem; color:#94a3b8;">Veículos Físicos</span></div><div class="master-metric-sub" style="color: #38bdf8;">Carga Disponível p/ Carregar: {vol_patio_disponivel:,.0f} t</div></summary>'
@@ -724,4 +694,4 @@ else:
 html_glp += '</details>'
 st.markdown(html_glp, unsafe_allow_html=True)
 
-st.markdown("<br><center><span style='color:#94a3b8; font-size: 0.75rem;'>Logística MI | A.L.O.V.E Core Mobile Dashboard</span></center>", unsafe_allow_html=True)
+st.markdown("<br><center><span style='color:#94a3b8; font-size: 0.80rem; font-weight: 600; letter-spacing: 0.5px;'>Developed by Cristiano Ciriaco</span></center>", unsafe_allow_html=True)
