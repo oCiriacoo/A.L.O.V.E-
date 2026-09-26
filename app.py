@@ -470,6 +470,29 @@ st.markdown(html_patio, unsafe_allow_html=True)
 # ==============================================================================
 # 🏭 BLOCO 2: PRODUÇÃO DO DIA (MS1 / MS2)
 # ==============================================================================
+def classificar_kpi_mobile(valor, tipo):
+    """Retorna a cor baseada na regra de três níveis: Normal, Alerta e Crítico"""
+    if valor == 0.0: return "#94a3b8"  # Cinza neutro se zerado
+    
+    if tipo == "alvura":
+        if valor < 88.50: return "#E74C3C"          # Vermelho
+        elif valor < 88.70: return "#FFD600"        # Amarelo (Alerta)
+        return "#00D672"                            # Verde
+    elif tipo == "sujidade":
+        if valor > 2.50: return "#E74C3C"
+        elif valor > 2.00: return "#FFD600"
+        return "#00D672"
+    elif tipo == "viscosidade":
+        if valor < 650.0: return "#E74C3C"
+        elif valor < 680.0: return "#FFD600"
+        return "#00D672"
+    elif tipo == "ph":
+        if valor > 0 and (valor < 5.50 or valor > 8.50): return "#E74C3C"
+        elif valor > 0 and ((5.50 <= valor < 6.00) or (8.00 < valor <= 8.50)): return "#FFD600"
+        return "#00D672"
+        
+    return "#00D672"
+
 html_prod_content = ""
 
 for maq in ["MS1", "MS2"]:
@@ -485,41 +508,50 @@ for maq in ["MS1", "MS2"]:
         l2 = q_dados.get('l2', 0)
         desclass = q_dados.get("desclassificando", False)
         
-        c_suj = "#00D672" if q_suj <= 2.5 else "#E74C3C"
-        c_vis = "#00D672" if q_visc >= 650 else "#E74C3C"
-        c_alv = "#00D672" if q_alvura >= 88.5 else "#E74C3C"
-        c_ph = "#00D672" if 5.5 <= q_ph <= 8.5 else "#E74C3C"
+        # Cores aplicadas pela nova regra de 3 níveis
+        c_alv = classificar_kpi_mobile(q_alvura, "alvura")
+        c_suj = classificar_kpi_mobile(q_suj, "sujidade")
+        c_vis = classificar_kpi_mobile(q_visc, "viscosidade")
+        c_ph  = classificar_kpi_mobile(q_ph, "ph")
+        
         cor_card_borda = "#E74C3C" if desclass else "#1c2b42"
+        
+        lbl_l1 = "Linha A" if maq == "MS1" else "Linha C"
+        lbl_l2 = "Linha B" if maq == "MS1" else "Linha D"
 
         html_prod_content += f"""
-        <div style='background-color: #111c2e; border: 1.5px solid {cor_card_borda}; border-radius: 8px; padding: 12px; margin-bottom: 8px;'>
-            <div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;'>
-                <span style='color:#ffffff; font-weight:800; font-size:1rem;'>⚙️ {maq}</span>
-                <span style='color:#FF9F1C; font-weight:800; font-size:0.85rem;'>📦 MAT: {mat_maq}</span>
-                <span style='color:#3498DB; font-weight:900; font-size:1.1rem;'>{p_maq:,.0f} t</span>
+        <div style='background-color: #111c2e; border: 1.5px solid {cor_card_borda}; border-radius: 8px; padding: 16px; margin-bottom: 12px;'>
+            <div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;'>
+                <span style='color:#ffffff; font-weight:900; font-size:1.25rem;'>⚙️ {maq}</span>
+                <span style='color:#FF9F1C; font-weight:900; font-size:1.05rem;'>📦 MAT: {mat_maq}</span>
+                <span style='color:#38bdf8; font-weight:900; font-size:1.4rem;'>{p_maq:,.0f} t</span>
             </div>
             
-            <div style='display:flex; justify-content:flex-end; gap: 12px; margin-bottom: 10px; font-size: 0.75rem; color: #94a3b8; font-weight: 700;'>
-                <span>Linha A/C: <span style='color:#ffffff;'>{l1:,.0f} t</span></span>
-                <span>Linha B/D: <span style='color:#ffffff;'>{l2:,.0f} t</span></span>
+            <div style='display:flex; justify-content:flex-end; gap: 16px; margin-bottom: 12px; font-size: 0.85rem; color: #94a3b8; font-weight: 800;'>
+                <span>{lbl_l1}: <span style='color:#ffffff;'>{l1:,.0f} t</span></span>
+                <span>{lbl_l2}: <span style='color:#ffffff;'>{l2:,.0f} t</span></span>
             </div>
             
-            <div style='display: flex; justify-content: space-between; text-align: center; border-top: 1px dashed #1c2b42; padding-top: 10px;'>
+            <div style='display: flex; justify-content: space-between; text-align: center; border-top: 1px dashed #1c2b42; padding-top: 14px;'>
                 <div>
-                    <div style='font-size:0.65rem; color:#94a3b8; text-transform:uppercase;'>Alvura</div>
-                    <div style='font-size:0.95rem; font-weight:bold; color:{c_alv};'>{q_alvura:.2f}%</div>
+                    <div style='font-size:0.75rem; color:#94a3b8; font-weight:800; text-transform:uppercase;'>ALVURA</div>
+                    <div style='font-size:1.35rem; font-weight:900; color:{c_alv}; margin: 4px 0;'>{q_alvura:.2f}%</div>
+                    <div style='font-size:0.7rem; color:#64748b; font-weight:700;'>(Mín: 88,5)</div>
                 </div>
                 <div>
-                    <div style='font-size:0.65rem; color:#94a3b8; text-transform:uppercase;'>Sujidade</div>
-                    <div style='font-size:0.95rem; font-weight:bold; color:{c_suj};'>{q_suj:.2f}</div>
+                    <div style='font-size:0.75rem; color:#94a3b8; font-weight:800; text-transform:uppercase;'>SUJIDADE</div>
+                    <div style='font-size:1.35rem; font-weight:900; color:{c_suj}; margin: 4px 0;'>{q_suj:.2f}</div>
+                    <div style='font-size:0.7rem; color:#64748b; font-weight:700;'>(Máx: 2,5)</div>
                 </div>
                 <div>
-                    <div style='font-size:0.65rem; color:#94a3b8; text-transform:uppercase;'>Viscosid.</div>
-                    <div style='font-size:0.95rem; font-weight:bold; color:{c_vis};'>{q_visc:,.0f}</div>
+                    <div style='font-size:0.75rem; color:#94a3b8; font-weight:800; text-transform:uppercase;'>VISCOSID.</div>
+                    <div style='font-size:1.35rem; font-weight:900; color:{c_vis}; margin: 4px 0;'>{q_visc:,.0f}</div>
+                    <div style='font-size:0.7rem; color:#64748b; font-weight:700;'>(Mín: 650)</div>
                 </div>
                 <div>
-                    <div style='font-size:0.65rem; color:#94a3b8; text-transform:uppercase;'>pH</div>
-                    <div style='font-size:0.95rem; font-weight:bold; color:{c_ph};'>{q_ph:.1f}</div>
+                    <div style='font-size:0.75rem; color:#94a3b8; font-weight:800; text-transform:uppercase;'>pH</div>
+                    <div style='font-size:1.35rem; font-weight:900; color:{c_ph}; margin: 4px 0;'>{q_ph:.1f}</div>
+                    <div style='font-size:0.7rem; color:#64748b; font-weight:700;'>(5,5 - 8,5)</div>
                 </div>
             </div>
         </div>
@@ -532,7 +564,7 @@ html_prod_completo = f"""
     <summary>
         <div class="master-metric-title">🏭 Produção de Celulose</div>
         <div class="master-metric-val">{prod_hoje_calc:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div>
-        <div class="master-metric-sub" style="color: #94a3b8;">MS1: {dados_maquinas['MS1'].get('producao', 0):,.0f} t | MS2: {dados_maquinas['MS2'].get('producao', 0):,.0f} t</div>
+        <div class="master-metric-sub" style="color: #E5B800;">MS1: {dados_maquinas['MS1'].get('producao', 0):,.0f} t | MS2: {dados_maquinas['MS2'].get('producao', 0):,.0f} t</div>
     </summary>
     <div class="master-content">
         {html_prod_content}
