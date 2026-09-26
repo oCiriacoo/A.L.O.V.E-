@@ -695,10 +695,6 @@ else:
 
 html_est += "</div></details>"
 st.markdown(html_est, unsafe_allow_html=True)
-.f-sub-content { display: none; animation: fadeIn 0.2s ease; background-color: #05080f; padding: 14px; border-radius: 8px; border: 1px solid #1c2b42; } #f_h_00:checked ~ .f-h-00, #f_h_08:checked ~ .f-h-08, #f_h_16:checked ~ .f-h-16, #f_o_00:checked ~ .f-o-00, #f_o_08:checked ~ .f-o-08, #f_o_16:checked ~ .f-o-16 { display: block; }
-
-.f-tag-ok { background-color: #00D672; color: #0a101d; } .f-tag-avaria { background-color: #E74C3C; color: #ffffff; } .f-tag-aten { background-color: #FFD600; color: #0a101d; } .f-tag-title { font-size: 0.85rem; color: #ffffff; font-weight: 800; margin-bottom: 8px; border-bottom: 1px dashed #1c2b42; padding-bottom: 4px; } .f-tag-container { margin-bottom: 16px; }
-
 # ==============================================================================
 # 🚜 BLOCO 5: FROTA E EQUIPAMENTOS (VIA HISTÓRICO DKRO)
 # ==============================================================================
