@@ -695,186 +695,103 @@ else:
 
 html_est += "</div></details>"
 st.markdown(html_est, unsafe_allow_html=True)
-# ==============================================================================
-# 🚜 BLOCO 5: FROTA E EQUIPAMENTOS (VIA HISTÓRICO DKRO)
-# ==============================================================================
-# Puxa da aba correta mostrada na sua imagem: Historico_DKRO
-df_frota = carregar_dados_nuvem("Historico_DKRO", cabecalho=0)
-html_frota = '<details class="master-box" style="border-left-color: #E67E22;">'
+.f-sub-content { display: none; animation: fadeIn 0.2s ease; background-color: #05080f; padding: 14px; border-radius: 8px; border: 1px solid #1c2b42; } #f_h_00:checked ~ .f-h-00, #f_h_08:checked ~ .f-h-08, #f_h_16:checked ~ .f-h-16, #f_o_00:checked ~ .f-o-00, #f_o_08:checked ~ .f-o-08, #f_o_16:checked ~ .f-o-16 { display: block; }
 
-agora_br = datetime.utcnow() - timedelta(hours=3)
-hoje_date = agora_br.date()
-ontem_date = hoje_date - timedelta(days=1)
+.f-tag-ok { background-color: #00D672; color: #0a101d; } .f-tag-avaria { background-color: #E74C3C; color: #ffffff; } .f-tag-aten { background-color: #FFD600; color: #0a101d; } .f-tag-title { font-size: 0.85rem; color: #ffffff; font-weight: 800; margin-bottom: 8px; border-bottom: 1px dashed #1c2b42; padding-bottom: 4px; } .f-tag-container { margin-bottom: 16px; }
 
-# Estrutura base para organizar os equipamentos
-frota_agrupada = {
-    "hoje": {"00h - 08h": {"EMP": {}, "TALHA": {}}, "08h - 16h": {"EMP": {}, "TALHA": {}}, "16h - 00h": {"EMP": {}, "TALHA": {}}},
-    "ontem": {"00h - 08h": {"EMP": {}, "TALHA": {}}, "08h - 16h": {"EMP": {}, "TALHA": {}}, "16h - 00h": {"EMP": {}, "TALHA": {}}}
-}
+<div class="frota-tabs">
+    <label for="f_dia_ontem" class="lbl-f-ontem">⏮️ Ontem (D-1)</label>
+    <label for="f_dia_hoje" class="lbl-f-hoje">📅 Hoje</label>
+</div>
 
-equip_em_uso_hoje = 0
+<div class="f-content-hoje">
+    <input type="radio" name="f_h_shift" id="f_h_00" >
+    <input type="radio" name="f_h_shift" id="f_h_08" >
+    <input type="radio" name="f_h_shift" id="f_h_16" checked>
 
-if not df_frota.empty and len(df_frota.columns) >= 7:
-    for _, row in df_frota.iterrows():
-        try:
-            dt_str = str(row.iloc[1]).strip()  # Col B: Data Hora do Checklist
-            tipo = str(row.iloc[5]).strip().upper()  # Col F: Tipo
-            equip = str(row.iloc[6]).strip().upper() # Col G: Equipamento
-            cond = str(row.iloc[8]).strip().upper() if len(row) > 8 else "100% OK" # Col I: Condição
-            
-            if not equip or equip in ["NAN", "NONE", ""]: continue
-            
-            # Tratamento robusto de data/hora do Pandas
-            dt_obj = pd.to_datetime(dt_str, format="%d/%m/%Y %H:%M:%S", errors="coerce")
-            if pd.isna(dt_obj):
-                dt_obj = pd.to_datetime(dt_str, errors="coerce", dayfirst=True)
-            if pd.isna(dt_obj): continue
-                
-            d_date = dt_obj.date()
-            d_hour = dt_obj.hour
-            
-            if d_date == hoje_date: day_key = "hoje"
-            elif d_date == ontem_date: day_key = "ontem"
-            else: continue
-                
-            # Classificação rígida baseada na hora real da batida, ignorando o que foi digitado
-            if d_hour < 8: shift_key = "00h - 08h"
-            elif d_hour < 16: shift_key = "08h - 16h"
-            else: shift_key = "16h - 00h"
-                
-            cat_key = "TALHA" if "TALHA" in tipo or "PONTE" in tipo or "TALHA" in equip else "EMP"
-            
-            # Atualiza com a pior condição registrada no turno
-            current_cond = frota_agrupada[day_key][shift_key][cat_key].get(equip, "100% OK")
-            if "AVARIA" in cond: 
-                frota_agrupada[day_key][shift_key][cat_key][equip] = "AVARIA"
-            elif "ATEN" in cond and current_cond != "AVARIA": 
-                frota_agrupada[day_key][shift_key][cat_key][equip] = "ATENÇÃO"
-            else: 
-                frota_agrupada[day_key][shift_key][cat_key][equip] = current_cond
-        except: pass
-        
-    # Conta quantos equipamentos únicos operaram no dia de hoje juntando os 3 turnos
-    hoje_set = set()
-    for s in ["00h - 08h", "08h - 16h", "16h - 00h"]:
-        hoje_set.update(frota_agrupada["hoje"][s]["EMP"].keys())
-        hoje_set.update(frota_agrupada["hoje"][s]["TALHA"].keys())
-    equip_em_uso_hoje = len(hoje_set)
-
-html_frota += f'<summary><div class="master-metric-title">🚜 Frota / Equipamentos</div><div class="master-metric-val">{equip_em_uso_hoje} <span style="font-size:1.1rem; color:#94a3b8;">Veículos Logados Hoje</span></div><div class="master-metric-sub" style="color: #E67E22;">Empilhadeiras e Talhas Elétricas</div></summary>'
-
-html_frota += '<div class="master-content">'
-
-# CSS Injetado apenas para as abas complexas da Frota
-html_frota += """
-<style>
-.frota-tabs { display: flex; gap: 8px; margin-bottom: 16px; justify-content: center; }
-.frota-tabs label { padding: 8px 16px; background-color: #162438; color: #94a3b8; border-radius: 6px; cursor: pointer; border: 1px solid #1c2b42; font-weight: 800; font-size: 0.9rem; transition: 0.2s; }
-#f_dia_ontem:checked ~ .frota-tabs .lbl-f-ontem { background-color: #38bdf8; color: #0a101d; border-color: #38bdf8; }
-#f_dia_hoje:checked ~ .frota-tabs .lbl-f-hoje { background-color: #E67E22; color: #0a101d; border-color: #E67E22; }
-.f-content-ontem, .f-content-hoje { display: none; animation: fadeIn 0.3s ease; }
-#f_dia_ontem:checked ~ .f-content-ontem { display: block; }
-#f_dia_hoje:checked ~ .f-content-hoje { display: block; }
-
-.f-sub-tabs { display: flex; gap: 6px; margin-bottom: 14px; justify-content: center; }
-.f-sub-tabs label { padding: 6px 12px; background-color: #111c2e; color: #64748b; border-radius: 6px; cursor: pointer; border: 1px solid #1c2b42; font-weight: 800; font-size: 0.8rem; transition: 0.2s;}
-#f_h_00:checked ~ .f-sub-tabs .lbl-h-00, #f_h_08:checked ~ .f-sub-tabs .lbl-h-08, #f_h_16:checked ~ .f-sub-tabs .lbl-h-16,
-#f_o_00:checked ~ .f-sub-tabs .lbl-o-00, #f_o_08:checked ~ .f-sub-tabs .lbl-o-08, #f_o_16:checked ~ .f-sub-tabs .lbl-o-16 
-{ background-color: #0d2417; color: #00D672; border-color: #00D672; }
-
-.f-sub-content { display: none; animation: fadeIn 0.2s ease; background-color: #05080f; padding: 14px; border-radius: 8px; border: 1px solid #1c2b42; }
-#f_h_00:checked ~ .f-h-00, #f_h_08:checked ~ .f-h-08, #f_h_16:checked ~ .f-h-16,
-#f_o_00:checked ~ .f-o-00, #f_o_08:checked ~ .f-o-08, #f_o_16:checked ~ .f-o-16 { display: block; }
-
-.f-tag-ok { background-color: #00D672; color: #0a101d; }
-.f-tag-avaria { background-color: #E74C3C; color: #ffffff; }
-.f-tag-aten { background-color: #FFD600; color: #0a101d; }
-.f-tag-title { font-size: 0.85rem; color: #ffffff; font-weight: 800; margin-bottom: 8px; border-bottom: 1px dashed #1c2b42; padding-bottom: 4px; }
-.f-tag-container { margin-bottom: 16px; }
-</style>
-"""
-
-agora_h = agora_br.hour
-ch_h_00 = "checked" if agora_h < 8 else ""
-ch_h_08 = "checked" if 8 <= agora_h < 16 else ""
-ch_h_16 = "checked" if 16 <= agora_h else ""
-
-html_frota += f"""
-<div style="text-align: center;">
-    <input type="radio" name="f_day" id="f_dia_ontem">
-    <input type="radio" name="f_day" id="f_dia_hoje" checked>
-    
-    <div class="frota-tabs">
-        <label for="f_dia_ontem" class="lbl-f-ontem">⏮️ Ontem (D-1)</label>
-        <label for="f_dia_hoje" class="lbl-f-hoje">📅 Hoje</label>
+    <div class="f-sub-tabs">
+        <label for="f_h_00" class="lbl-h-00">00h - 08h</label>
+        <label for="f_h_08" class="lbl-h-08">08h - 16h</label>
+        <label for="f_h_16" class="lbl-h-16">16h - 00h</label>
     </div>
-"""
 
-def render_tags(dict_equip):
-    if not dict_equip: return "<span style='color:#64748b; font-size:0.8rem; font-weight:600;'>Nenhum registro neste turno.</span>"
-    html_t = ""
-    for eq, cond in sorted(dict_equip.items()):
-        # Cores baseadas na condição de avaria (Sinal de trânsito)
-        cls = "f-tag-avaria" if cond == "AVARIA" else ("f-tag-aten" if cond == "ATENÇÃO" else "f-tag-ok")
-        html_t += f"<span class='tag-box {cls}'>{eq}</span> "
-    return html_t
+    <div class="f-sub-content f-h-00" style="text-align: left;">
+        <div class="f-tag-container">
+            <div class="f-tag-title">🟢 Empilhadeiras Logadas</div>
+            <div><span class='tag-box f-tag-avaria'>EMP-008</span> <span class='tag-box f-tag-aten'>EMP-028</span> <span class='tag-box f-tag-ok'>EMP-030</span> <span class='tag-box f-tag-ok'>EMP-031</span> </div>
+        </div>
+        <div class="f-tag-container" style="margin-bottom:0;">
+            <div class="f-tag-title">🏗️ Talhas / Pontes Rolantes</div>
+            <div><span class='tag-box f-tag-ok'>TALHA 01</span> </div>
+        </div>
+    </div>
 
-# ================================ HOJE ================================
-html_frota += f"""
-    <div class="f-content-hoje">
-        <input type="radio" name="f_h_shift" id="f_h_00" {ch_h_00}>
-        <input type="radio" name="f_h_shift" id="f_h_08" {ch_h_08}>
-        <input type="radio" name="f_h_shift" id="f_h_16" {ch_h_16}>
-        
-        <div class="f-sub-tabs">
-            <label for="f_h_00" class="lbl-h-00">00h - 08h</label>
-            <label for="f_h_08" class="lbl-h-08">08h - 16h</label>
-            <label for="f_h_16" class="lbl-h-16">16h - 00h</label>
+    <div class="f-sub-content f-h-08" style="text-align: left;">
+        <div class="f-tag-container">
+            <div class="f-tag-title">🟢 Empilhadeiras Logadas</div>
+            <div><span class='tag-box f-tag-avaria'>EMP-011</span> <span class='tag-box f-tag-avaria'>EMP-028</span> <span class='tag-box f-tag-ok'>EMP-029</span> <span class='tag-box f-tag-ok'>EMP-030</span> <span class='tag-box f-tag-avaria'>EMP-032</span> </div>
         </div>
-"""
-for s_id, s_key in [("f-h-00", "00h - 08h"), ("f-h-08", "08h - 16h"), ("f-h-16", "16h - 00h")]:
-    html_frota += f"""
-        <div class="f-sub-content {s_id}" style="text-align: left;">
-            <div class="f-tag-container">
-                <div class="f-tag-title">🟢 Empilhadeiras Logadas</div>
-                <div>{render_tags(frota_agrupada["hoje"][s_key]["EMP"])}</div>
-            </div>
-            <div class="f-tag-container" style="margin-bottom:0;">
-                <div class="f-tag-title">🏗️ Talhas / Pontes Rolantes</div>
-                <div>{render_tags(frota_agrupada["hoje"][s_key]["TALHA"])}</div>
-            </div>
+        <div class="f-tag-container" style="margin-bottom:0;">
+            <div class="f-tag-title">🏗️ Talhas / Pontes Rolantes</div>
+            <div><span class='tag-box f-tag-avaria'>TALHA 02</span> </div>
         </div>
-    """
-html_frota += "</div>"
+    </div>
 
-# =============================== ONTEM ===============================
-html_frota += f"""
-    <div class="f-content-ontem">
-        <input type="radio" name="f_o_shift" id="f_o_00">
-        <input type="radio" name="f_o_shift" id="f_o_08" checked>
-        <input type="radio" name="f_o_shift" id="f_o_16">
-        
-        <div class="f-sub-tabs">
-            <label for="f_o_00" class="lbl-o-00">00h - 08h</label>
-            <label for="f_o_08" class="lbl-o-08">08h - 16h</label>
-            <label for="f_o_16" class="lbl-o-16">16h - 00h</label>
+    <div class="f-sub-content f-h-16" style="text-align: left;">
+        <div class="f-tag-container">
+            <div class="f-tag-title">🟢 Empilhadeiras Logadas</div>
+            <div><span style='color:#64748b; font-size:0.8rem; font-weight:600;'>Nenhum registro neste turno.</span></div>
         </div>
-"""
-for s_id, s_key in [("f-o-00", "00h - 08h"), ("f-o-08", "08h - 16h"), ("f-o-16", "16h - 00h")]:
-    html_frota += f"""
-        <div class="f-sub-content {s_id}" style="text-align: left;">
-            <div class="f-tag-container">
-                <div class="f-tag-title">🟢 Empilhadeiras Logadas</div>
-                <div>{render_tags(frota_agrupada["ontem"][s_key]["EMP"])}</div>
-            </div>
-            <div class="f-tag-container" style="margin-bottom:0;">
-                <div class="f-tag-title">🏗️ Talhas / Pontes Rolantes</div>
-                <div>{render_tags(frota_agrupada["ontem"][s_key]["TALHA"])}</div>
-            </div>
+        <div class="f-tag-container" style="margin-bottom:0;">
+            <div class="f-tag-title">🏗️ Talhas / Pontes Rolantes</div>
+            <div><span style='color:#64748b; font-size:0.8rem; font-weight:600;'>Nenhum registro neste turno.</span></div>
         </div>
-    """
-html_frota += "</div></div></div></details>"
-st.markdown(html_frota, unsafe_allow_html=True)
+    </div>
+</div>
+<div class="f-content-ontem">
+    <input type="radio" name="f_o_shift" id="f_o_00">
+    <input type="radio" name="f_o_shift" id="f_o_08" checked>
+    <input type="radio" name="f_o_shift" id="f_o_16">
+
+    <div class="f-sub-tabs">
+        <label for="f_o_00" class="lbl-o-00">00h - 08h</label>
+        <label for="f_o_08" class="lbl-o-08">08h - 16h</label>
+        <label for="f_o_16" class="lbl-o-16">16h - 00h</label>
+    </div>
+
+    <div class="f-sub-content f-o-00" style="text-align: left;">
+        <div class="f-tag-container">
+            <div class="f-tag-title">🟢 Empilhadeiras Logadas</div>
+            <div><span class='tag-box f-tag-avaria'>EMP-008</span> <span class='tag-box f-tag-aten'>EMP-028</span> <span class='tag-box f-tag-ok'>EMP-030</span> <span class='tag-box f-tag-ok'>EMP-031</span> </div>
+        </div>
+        <div class="f-tag-container" style="margin-bottom:0;">
+            <div class="f-tag-title">🏗️ Talhas / Pontes Rolantes</div>
+            <div><span class='tag-box f-tag-avaria'>TALHA 02</span> </div>
+        </div>
+    </div>
+
+    <div class="f-sub-content f-o-08" style="text-align: left;">
+        <div class="f-tag-container">
+            <div class="f-tag-title">🟢 Empilhadeiras Logadas</div>
+            <div><span class='tag-box f-tag-avaria'>EMP-011</span> <span class='tag-box f-tag-avaria'>EMP-013</span> <span class='tag-box f-tag-avaria'>EMP-028</span> <span class='tag-box f-tag-ok'>EMP-029</span> <span class='tag-box f-tag-avaria'>EMP-030</span> <span class='tag-box f-tag-avaria'>EMP-031</span> </div>
+        </div>
+        <div class="f-tag-container" style="margin-bottom:0;">
+            <div class="f-tag-title">🏗️ Talhas / Pontes Rolantes</div>
+            <div><span class='tag-box f-tag-avaria'>TALHA 01</span> </div>
+        </div>
+    </div>
+
+    <div class="f-sub-content f-o-16" style="text-align: left;">
+        <div class="f-tag-container">
+            <div class="f-tag-title">🟢 Empilhadeiras Logadas</div>
+            <div><span class='tag-box f-tag-avaria'>EMP-008</span> <span class='tag-box f-tag-ok'>EMP-011</span> <span class='tag-box f-tag-avaria'>EMP-013</span> <span class='tag-box f-tag-avaria'>EMP-030</span> <span class='tag-box f-tag-avaria'>EMP-031</span> <span class='tag-box f-tag-ok'>EMP-032</span> </div>
+        </div>
+        <div class="f-tag-container" style="margin-bottom:0;">
+            <div class="f-tag-title">🏗️ Talhas / Pontes Rolantes</div>
+            <div><span class='tag-box f-tag-ok'>TALHA 02</span> </div>
+        </div>
+    </div>
+</div></div></div></details>
 
 # ==============================================================================
 # ⛽ BLOCO 6: CONSUMO GLP MENSAL
