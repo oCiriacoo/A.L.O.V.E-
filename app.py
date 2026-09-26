@@ -763,31 +763,30 @@ html_frota += '<div class="master-content">'
 
 html_frota += """
 <style>
-.f-tabs-container { margin-bottom: 20px; }
-.f-tabs-main { display: flex; gap: 8px; justify-content: center; margin-bottom: 16px; }
-.f-tabs-main label { padding: 8px 16px; background-color: #162438; color: #94a3b8; border-radius: 6px; cursor: pointer; border: 1px solid #1c2b42; font-weight: 800; font-size: 0.9rem; transition: 0.2s; }
-.f-tabs-sub { display: flex; gap: 6px; justify-content: center; margin-bottom: 14px; }
-.f-tabs-sub label { padding: 6px 12px; background-color: #111c2e; color: #64748b; border-radius: 6px; cursor: pointer; border: 1px solid #1c2b42; font-weight: 800; font-size: 0.8rem; transition: 0.2s; }
+.frota-tabs-main { display: flex; gap: 8px; justify-content: center; margin-bottom: 16px; }
+.frota-tabs-main label { padding: 8px 16px; background-color: #162438; color: #94a3b8; border-radius: 6px; cursor: pointer; border: 1px solid #1c2b42; font-weight: 800; font-size: 0.9rem; transition: 0.2s; }
+.frota-tabs-sub { display: flex; gap: 6px; justify-content: center; margin-bottom: 14px; }
+.frota-tabs-sub label { padding: 6px 12px; background-color: #111c2e; color: #64748b; border-radius: 6px; cursor: pointer; border: 1px solid #1c2b42; font-weight: 800; font-size: 0.8rem; transition: 0.2s; }
 
 /* Escondendo os inputs */
 .f-rad-main, .f-rad-sub { display: none; }
 
 /* Navegação Principal (Dias) */
 .f-content-dia { display: none; animation: fadeIn 0.3s ease; }
-#f_dia_ontem:checked ~ .f-tabs-main .lbl-f-ontem { background-color: #38bdf8; color: #0a101d; border-color: #38bdf8; }
-#f_dia_hoje:checked ~ .f-tabs-main .lbl-f-hoje { background-color: #E67E22; color: #0a101d; border-color: #E67E22; }
-#f_dia_ontem:checked ~ #f_box_ontem { display: block; }
-#f_dia_hoje:checked ~ #f_box_hoje { display: block; }
+#frota_dia_ontem:checked ~ .frota-tabs-main .lbl-f-ontem { background-color: #38bdf8; color: #0a101d; border-color: #38bdf8; }
+#frota_dia_hoje:checked ~ .frota-tabs-main .lbl-f-hoje { background-color: #E67E22; color: #0a101d; border-color: #E67E22; }
+#frota_dia_ontem:checked ~ #frota_box_ontem { display: block; }
+#frota_dia_hoje:checked ~ #frota_box_hoje { display: block; }
 
 /* Navegação Secundária (Turnos - Hoje) */
-.f-content-turno-hoje { display: none; background-color: #05080f; padding: 14px; border-radius: 8px; border: 1px solid #1c2b42; }
-#f_h_00:checked ~ .f-tabs-sub .lbl-h-00, #f_h_08:checked ~ .f-tabs-sub .lbl-h-08, #f_h_16:checked ~ .f-tabs-sub .lbl-h-16 { background-color: #0d2417; color: #00D672; border-color: #00D672; }
-#f_h_00:checked ~ #f_h_content_00, #f_h_08:checked ~ #f_h_content_08, #f_h_16:checked ~ #f_h_content_16 { display: block; }
+.f-content-turno-hoje { display: none; background-color: #05080f; padding: 14px; border-radius: 8px; border: 1px solid #1c2b42; text-align: left; }
+#frota_h_00:checked ~ .frota-tabs-sub .lbl-h-00, #frota_h_08:checked ~ .frota-tabs-sub .lbl-h-08, #frota_h_16:checked ~ .frota-tabs-sub .lbl-h-16 { background-color: #0d2417; color: #00D672; border-color: #00D672; }
+#frota_h_00:checked ~ #frota_h_content_00, #frota_h_08:checked ~ #frota_h_content_08, #frota_h_16:checked ~ #frota_h_content_16 { display: block; }
 
 /* Navegação Secundária (Turnos - Ontem) */
-.f-content-turno-ontem { display: none; background-color: #05080f; padding: 14px; border-radius: 8px; border: 1px solid #1c2b42; }
-#f_o_00:checked ~ .f-tabs-sub .lbl-o-00, #f_o_08:checked ~ .f-tabs-sub .lbl-o-08, #f_o_16:checked ~ .f-tabs-sub .lbl-o-16 { background-color: #0d2417; color: #00D672; border-color: #00D672; }
-#f_o_00:checked ~ #f_o_content_00, #f_o_08:checked ~ #f_o_content_08, #f_o_16:checked ~ #f_o_content_16 { display: block; }
+.f-content-turno-ontem { display: none; background-color: #05080f; padding: 14px; border-radius: 8px; border: 1px solid #1c2b42; text-align: left; }
+#frota_o_00:checked ~ .frota-tabs-sub .lbl-o-00, #frota_o_08:checked ~ .frota-tabs-sub .lbl-o-08, #frota_o_16:checked ~ .frota-tabs-sub .lbl-o-16 { background-color: #0d2417; color: #00D672; border-color: #00D672; }
+#frota_o_00:checked ~ #frota_o_content_00, #frota_o_08:checked ~ #frota_o_content_08, #frota_o_16:checked ~ #frota_o_content_16 { display: block; }
 
 /* Tags de Equipamentos */
 .f-tag-ok { background-color: #00D672; color: #0a101d; }
@@ -804,18 +803,18 @@ ch_h_08 = "checked" if 8 <= agora_h < 16 else ""
 ch_h_16 = "checked" if 16 <= agora_h else ""
 
 html_frota += f"""
-<div class="f-tabs-container" style="text-align: center;">
-    <input type="radio" name="f_day" id="f_dia_ontem" class="f-rad-main">
-    <input type="radio" name="f_day" id="f_dia_hoje" class="f-rad-main" checked>
+<div style="text-align: center;">
+    <input type="radio" name="frota_day" id="frota_dia_ontem" class="f-rad-main">
+    <input type="radio" name="frota_day" id="frota_dia_hoje" class="f-rad-main" checked>
     
-    <div class="f-tabs-main">
-        <label for="f_dia_ontem" class="lbl-f-ontem">⏮️ Ontem (D-1)</label>
-        <label for="f_dia_hoje" class="lbl-f-hoje">📅 Hoje</label>
+    <div class="frota-tabs-main">
+        <label for="frota_dia_ontem" class="lbl-f-ontem">⏮️ Ontem (D-1)</label>
+        <label for="frota_dia_hoje" class="lbl-f-hoje">📅 Hoje</label>
     </div>
 """
 
 def render_tags(dict_equip):
-    if not dict_equip: return "<span style='color:#64748b; font-size:0.8rem; font-weight:600;'>Nenhum registro.</span>"
+    if not dict_equip: return "<span style='color:#64748b; font-size:0.8rem; font-weight:600;'>Nenhum registro neste turno.</span>"
     html_t = ""
     for eq, cond in sorted(dict_equip.items()):
         cls = "f-tag-avaria" if cond == "AVARIA" else ("f-tag-aten" if cond == "ATENÇÃO" else "f-tag-ok")
@@ -824,20 +823,20 @@ def render_tags(dict_equip):
 
 # ================================ HOJE ================================
 html_frota += f"""
-    <div id="f_box_hoje" class="f-content-dia">
-        <input type="radio" name="f_h_shift" id="f_h_00" class="f-rad-sub" {ch_h_00}>
-        <input type="radio" name="f_h_shift" id="f_h_08" class="f-rad-sub" {ch_h_08}>
-        <input type="radio" name="f_h_shift" id="f_h_16" class="f-rad-sub" {ch_h_16}>
+    <div id="frota_box_hoje" class="f-content-dia">
+        <input type="radio" name="frota_h_shift" id="frota_h_00" class="f-rad-sub" {ch_h_00}>
+        <input type="radio" name="frota_h_shift" id="frota_h_08" class="f-rad-sub" {ch_h_08}>
+        <input type="radio" name="frota_h_shift" id="frota_h_16" class="f-rad-sub" {ch_h_16}>
         
-        <div class="f-tabs-sub">
-            <label for="f_h_00" class="lbl-h-00">00h - 08h</label>
-            <label for="f_h_08" class="lbl-h-08">08h - 16h</label>
-            <label for="f_h_16" class="lbl-h-16">16h - 00h</label>
+        <div class="frota-tabs-sub">
+            <label for="frota_h_00" class="lbl-h-00">00h - 08h</label>
+            <label for="frota_h_08" class="lbl-h-08">08h - 16h</label>
+            <label for="frota_h_16" class="lbl-h-16">16h - 00h</label>
         </div>
 """
-for s_id, s_key in [("f_h_content_00", "00h - 08h"), ("f_h_content_08", "08h - 16h"), ("f_h_content_16", "16h - 00h")]:
+for s_id, s_key in [("frota_h_content_00", "00h - 08h"), ("frota_h_content_08", "08h - 16h"), ("frota_h_content_16", "16h - 00h")]:
     html_frota += f"""
-        <div id="{s_id}" class="f-content-turno-hoje" style="text-align: left;">
+        <div id="{s_id}" class="f-content-turno-hoje">
             <div class="f-tag-container">
                 <div class="f-tag-title">🟢 Empilhadeiras Logadas</div>
                 <div>{render_tags(frota_agrupada["hoje"][s_key]["EMP"])}</div>
@@ -852,20 +851,20 @@ html_frota += "</div>"
 
 # =============================== ONTEM ===============================
 html_frota += f"""
-    <div id="f_box_ontem" class="f-content-dia">
-        <input type="radio" name="f_o_shift" id="f_o_00" class="f-rad-sub">
-        <input type="radio" name="f_o_shift" id="f_o_08" class="f-rad-sub" checked>
-        <input type="radio" name="f_o_shift" id="f_o_16" class="f-rad-sub">
+    <div id="frota_box_ontem" class="f-content-dia">
+        <input type="radio" name="frota_o_shift" id="frota_o_00" class="f-rad-sub">
+        <input type="radio" name="frota_o_shift" id="frota_o_08" class="f-rad-sub" checked>
+        <input type="radio" name="frota_o_shift" id="frota_o_16" class="f-rad-sub">
         
-        <div class="f-tabs-sub">
-            <label for="f_o_00" class="lbl-o-00">00h - 08h</label>
-            <label for="f_o_08" class="lbl-o-08">08h - 16h</label>
-            <label for="f_o_16" class="lbl-o-16">16h - 00h</label>
+        <div class="frota-tabs-sub">
+            <label for="frota_o_00" class="lbl-o-00">00h - 08h</label>
+            <label for="frota_o_08" class="lbl-o-08">08h - 16h</label>
+            <label for="frota_o_16" class="lbl-o-16">16h - 00h</label>
         </div>
 """
-for s_id, s_key in [("f_o_content_00", "00h - 08h"), ("f_o_content_08", "08h - 16h"), ("f_o_content_16", "16h - 00h")]:
+for s_id, s_key in [("frota_o_content_00", "00h - 08h"), ("frota_o_content_08", "08h - 16h"), ("frota_o_content_16", "16h - 00h")]:
     html_frota += f"""
-        <div id="{s_id}" class="f-content-turno-ontem" style="text-align: left;">
+        <div id="{s_id}" class="f-content-turno-ontem">
             <div class="f-tag-container">
                 <div class="f-tag-title">🟢 Empilhadeiras Logadas</div>
                 <div>{render_tags(frota_agrupada["ontem"][s_key]["EMP"])}</div>
@@ -878,3 +877,53 @@ for s_id, s_key in [("f_o_content_00", "00h - 08h"), ("f_o_content_08", "08h - 1
     """
 html_frota += "</div></div></div></details>"
 st.markdown(html_frota, unsafe_allow_html=True)
+
+# ==============================================================================
+# ⛽ BLOCO 6: CONSUMO GLP MENSAL
+# ==============================================================================
+df_glp = carregar_dados_nuvem("Abastecimentos_GLP", cabecalho=None)
+html_glp = '<details class="master-box" style="border-left-color: #fd7e14;">'
+
+if not df_glp.empty and len(df_glp.columns) >= 8:
+    df_g = pd.DataFrame()
+    df_g["DATA_DT"] = pd.to_datetime(df_glp.iloc[:, 2].astype(str).str.strip(), format="%d/%m/%Y", errors="coerce")
+    df_g = df_g.dropna(subset=["DATA_DT"])
+    
+    if not df_g.empty:
+        df_g["MES_ANO"] = df_g["DATA_DT"].dt.strftime("%m/%Y")
+        df_g["MAQUINA"] = df_glp.iloc[:, 5].astype(str).str.strip()
+        df_g["KG_NUM"] = df_glp.iloc[:, 7].apply(safe_to_numeric)
+        
+        meses_disp = df_g["MES_ANO"].dropna().unique().tolist()
+        if meses_disp:
+            meses_disp.sort(key=lambda x: datetime.strptime(x, "%m/%Y"))
+            mes_recente = meses_disp[-1]
+            df_mes_recente = df_g[df_g["MES_ANO"] == mes_recente]
+            total_glp_recente = forcar_par(df_mes_recente["KG_NUM"].sum())
+
+            html_glp += f'<summary><div class="master-metric-title">⛽ Consumo de GLP da Frota</div><div class="master-metric-val">{total_glp_recente:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">KG</span></div><div class="master-metric-sub" style="color: #fd7e14;">Acumulado do Mês Atual ({mes_recente})</div></summary>'
+            html_glp += '<div class="master-content">'
+            
+            df_maq = df_mes_recente.groupby("MAQUINA")["KG_NUM"].sum().reset_index().sort_values(by="KG_NUM", ascending=False)
+            
+            if not df_maq.empty:
+                chart_data_glp = []
+                for _, row in df_maq.iterrows():
+                    val_kg_par = forcar_par(row["KG_NUM"])
+                    chart_data_glp.append({
+                        "label": row["MAQUINA"],
+                        "value": val_kg_par,
+                        "text": f"{val_kg_par:,.0f} kg",
+                        "color": "#fd7e14"
+                    })
+                html_glp += build_vertical_chart(chart_data_glp)
+            else:
+                html_glp += '<div style="color:gray; text-align:center;">Sem consumo registrado.</div>'
+            html_glp += '</div>'
+else:
+    html_glp += '<summary><div class="master-metric-title">⛽ Consumo de GLP</div></summary><div class="master-content"><div style="color:gray;">Planilha indisponível.</div></div>'
+
+html_glp += '</details>'
+st.markdown(html_glp, unsafe_allow_html=True)
+
+st.markdown("<br><center><span style='color:#94a3b8; font-size: 0.80rem; font-weight: 600; letter-spacing: 0.5px;'>A.L.O.V.E - Mobile / Developed by Cristiano Ciriaco</span></center>", unsafe_allow_html=True)
