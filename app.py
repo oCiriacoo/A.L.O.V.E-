@@ -699,146 +699,186 @@ st.markdown(html_est, unsafe_allow_html=True)
 
 .f-tag-ok { background-color: #00D672; color: #0a101d; } .f-tag-avaria { background-color: #E74C3C; color: #ffffff; } .f-tag-aten { background-color: #FFD600; color: #0a101d; } .f-tag-title { font-size: 0.85rem; color: #ffffff; font-weight: 800; margin-bottom: 8px; border-bottom: 1px dashed #1c2b42; padding-bottom: 4px; } .f-tag-container { margin-bottom: 16px; }
 
-<div class="frota-tabs">
-    <label for="f_dia_ontem" class="lbl-f-ontem">⏮️ Ontem (D-1)</label>
-    <label for="f_dia_hoje" class="lbl-f-hoje">📅 Hoje</label>
-</div>
-
-<div class="f-content-hoje">
-    <input type="radio" name="f_h_shift" id="f_h_00" >
-    <input type="radio" name="f_h_shift" id="f_h_08" >
-    <input type="radio" name="f_h_shift" id="f_h_16" checked>
-
-    <div class="f-sub-tabs">
-        <label for="f_h_00" class="lbl-h-00">00h - 08h</label>
-        <label for="f_h_08" class="lbl-h-08">08h - 16h</label>
-        <label for="f_h_16" class="lbl-h-16">16h - 00h</label>
-    </div>
-
-    <div class="f-sub-content f-h-00" style="text-align: left;">
-        <div class="f-tag-container">
-            <div class="f-tag-title">🟢 Empilhadeiras Logadas</div>
-            <div><span class='tag-box f-tag-avaria'>EMP-008</span> <span class='tag-box f-tag-aten'>EMP-028</span> <span class='tag-box f-tag-ok'>EMP-030</span> <span class='tag-box f-tag-ok'>EMP-031</span> </div>
-        </div>
-        <div class="f-tag-container" style="margin-bottom:0;">
-            <div class="f-tag-title">🏗️ Talhas / Pontes Rolantes</div>
-            <div><span class='tag-box f-tag-ok'>TALHA 01</span> </div>
-        </div>
-    </div>
-
-    <div class="f-sub-content f-h-08" style="text-align: left;">
-        <div class="f-tag-container">
-            <div class="f-tag-title">🟢 Empilhadeiras Logadas</div>
-            <div><span class='tag-box f-tag-avaria'>EMP-011</span> <span class='tag-box f-tag-avaria'>EMP-028</span> <span class='tag-box f-tag-ok'>EMP-029</span> <span class='tag-box f-tag-ok'>EMP-030</span> <span class='tag-box f-tag-avaria'>EMP-032</span> </div>
-        </div>
-        <div class="f-tag-container" style="margin-bottom:0;">
-            <div class="f-tag-title">🏗️ Talhas / Pontes Rolantes</div>
-            <div><span class='tag-box f-tag-avaria'>TALHA 02</span> </div>
-        </div>
-    </div>
-
-    <div class="f-sub-content f-h-16" style="text-align: left;">
-        <div class="f-tag-container">
-            <div class="f-tag-title">🟢 Empilhadeiras Logadas</div>
-            <div><span style='color:#64748b; font-size:0.8rem; font-weight:600;'>Nenhum registro neste turno.</span></div>
-        </div>
-        <div class="f-tag-container" style="margin-bottom:0;">
-            <div class="f-tag-title">🏗️ Talhas / Pontes Rolantes</div>
-            <div><span style='color:#64748b; font-size:0.8rem; font-weight:600;'>Nenhum registro neste turno.</span></div>
-        </div>
-    </div>
-</div>
-<div class="f-content-ontem">
-    <input type="radio" name="f_o_shift" id="f_o_00">
-    <input type="radio" name="f_o_shift" id="f_o_08" checked>
-    <input type="radio" name="f_o_shift" id="f_o_16">
-
-    <div class="f-sub-tabs">
-        <label for="f_o_00" class="lbl-o-00">00h - 08h</label>
-        <label for="f_o_08" class="lbl-o-08">08h - 16h</label>
-        <label for="f_o_16" class="lbl-o-16">16h - 00h</label>
-    </div>
-
-    <div class="f-sub-content f-o-00" style="text-align: left;">
-        <div class="f-tag-container">
-            <div class="f-tag-title">🟢 Empilhadeiras Logadas</div>
-            <div><span class='tag-box f-tag-avaria'>EMP-008</span> <span class='tag-box f-tag-aten'>EMP-028</span> <span class='tag-box f-tag-ok'>EMP-030</span> <span class='tag-box f-tag-ok'>EMP-031</span> </div>
-        </div>
-        <div class="f-tag-container" style="margin-bottom:0;">
-            <div class="f-tag-title">🏗️ Talhas / Pontes Rolantes</div>
-            <div><span class='tag-box f-tag-avaria'>TALHA 02</span> </div>
-        </div>
-    </div>
-
-    <div class="f-sub-content f-o-08" style="text-align: left;">
-        <div class="f-tag-container">
-            <div class="f-tag-title">🟢 Empilhadeiras Logadas</div>
-            <div><span class='tag-box f-tag-avaria'>EMP-011</span> <span class='tag-box f-tag-avaria'>EMP-013</span> <span class='tag-box f-tag-avaria'>EMP-028</span> <span class='tag-box f-tag-ok'>EMP-029</span> <span class='tag-box f-tag-avaria'>EMP-030</span> <span class='tag-box f-tag-avaria'>EMP-031</span> </div>
-        </div>
-        <div class="f-tag-container" style="margin-bottom:0;">
-            <div class="f-tag-title">🏗️ Talhas / Pontes Rolantes</div>
-            <div><span class='tag-box f-tag-avaria'>TALHA 01</span> </div>
-        </div>
-    </div>
-
-    <div class="f-sub-content f-o-16" style="text-align: left;">
-        <div class="f-tag-container">
-            <div class="f-tag-title">🟢 Empilhadeiras Logadas</div>
-            <div><span class='tag-box f-tag-avaria'>EMP-008</span> <span class='tag-box f-tag-ok'>EMP-011</span> <span class='tag-box f-tag-avaria'>EMP-013</span> <span class='tag-box f-tag-avaria'>EMP-030</span> <span class='tag-box f-tag-avaria'>EMP-031</span> <span class='tag-box f-tag-ok'>EMP-032</span> </div>
-        </div>
-        <div class="f-tag-container" style="margin-bottom:0;">
-            <div class="f-tag-title">🏗️ Talhas / Pontes Rolantes</div>
-            <div><span class='tag-box f-tag-ok'>TALHA 02</span> </div>
-        </div>
-    </div>
-</div></div></div></details>
-
 # ==============================================================================
-# ⛽ BLOCO 6: CONSUMO GLP MENSAL
+# 🚜 BLOCO 5: FROTA E EQUIPAMENTOS (VIA HISTÓRICO DKRO)
 # ==============================================================================
-df_glp = carregar_dados_nuvem("Abastecimentos_GLP", cabecalho=None)
-html_glp = '<details class="master-box" style="border-left-color: #fd7e14;">'
+# Puxa da aba Historico_DKRO
+df_frota = carregar_dados_nuvem("Historico_DKRO", cabecalho=0)
+html_frota = '<details class="master-box" style="border-left-color: #E67E22;">'
 
-if not df_glp.empty and len(df_glp.columns) >= 8:
-    df_g = pd.DataFrame()
-    df_g["DATA_DT"] = pd.to_datetime(df_glp.iloc[:, 2].astype(str).str.strip(), format="%d/%m/%Y", errors="coerce")
-    df_g = df_g.dropna(subset=["DATA_DT"])
-    
-    if not df_g.empty:
-        df_g["MES_ANO"] = df_g["DATA_DT"].dt.strftime("%m/%Y")
-        df_g["MAQUINA"] = df_glp.iloc[:, 5].astype(str).str.strip()
-        df_g["KG_NUM"] = df_glp.iloc[:, 7].apply(safe_to_numeric)
+agora_br = datetime.utcnow() - timedelta(hours=3)
+hoje_date = agora_br.date()
+ontem_date = hoje_date - timedelta(days=1)
+
+# Estrutura base para organizar os equipamentos
+frota_agrupada = {
+    "hoje": {"00h - 08h": {"EMP": {}, "TALHA": {}}, "08h - 16h": {"EMP": {}, "TALHA": {}}, "16h - 00h": {"EMP": {}, "TALHA": {}}},
+    "ontem": {"00h - 08h": {"EMP": {}, "TALHA": {}}, "08h - 16h": {"EMP": {}, "TALHA": {}}, "16h - 00h": {"EMP": {}, "TALHA": {}}}
+}
+
+equip_em_uso_hoje = 0
+
+if not df_frota.empty and len(df_frota.columns) >= 7:
+    for _, row in df_frota.iterrows():
+        try:
+            dt_str = str(row.iloc[1]).strip()
+            tipo = str(row.iloc[5]).strip().upper()
+            equip = str(row.iloc[6]).strip().upper()
+            cond = str(row.iloc[8]).strip().upper() if len(row) > 8 else "100% OK"
+            
+            if not equip or equip in ["NAN", "NONE", ""]: continue
+            
+            dt_obj = pd.to_datetime(dt_str, format="%d/%m/%Y %H:%M:%S", errors="coerce")
+            if pd.isna(dt_obj):
+                dt_obj = pd.to_datetime(dt_str, errors="coerce", dayfirst=True)
+            if pd.isna(dt_obj): continue
+                
+            d_date = dt_obj.date()
+            d_hour = dt_obj.hour
+            
+            if d_date == hoje_date: day_key = "hoje"
+            elif d_date == ontem_date: day_key = "ontem"
+            else: continue
+                
+            if d_hour < 8: shift_key = "00h - 08h"
+            elif d_hour < 16: shift_key = "08h - 16h"
+            else: shift_key = "16h - 00h"
+                
+            cat_key = "TALHA" if "TALHA" in tipo or "PONTE" in tipo or "TALHA" in equip else "EMP"
+            
+            current_cond = frota_agrupada[day_key][shift_key][cat_key].get(equip, "100% OK")
+            if "AVARIA" in cond: 
+                frota_agrupada[day_key][shift_key][cat_key][equip] = "AVARIA"
+            elif "ATEN" in cond and current_cond != "AVARIA": 
+                frota_agrupada[day_key][shift_key][cat_key][equip] = "ATENÇÃO"
+            else: 
+                frota_agrupada[day_key][shift_key][cat_key][equip] = current_cond
+        except: pass
         
-        meses_disp = df_g["MES_ANO"].dropna().unique().tolist()
-        if meses_disp:
-            meses_disp.sort(key=lambda x: datetime.strptime(x, "%m/%Y"))
-            mes_recente = meses_disp[-1]
-            df_mes_recente = df_g[df_g["MES_ANO"] == mes_recente]
-            total_glp_recente = forcar_par(df_mes_recente["KG_NUM"].sum())
+    hoje_set = set()
+    for s in ["00h - 08h", "08h - 16h", "16h - 00h"]:
+        hoje_set.update(frota_agrupada["hoje"][s]["EMP"].keys())
+        hoje_set.update(frota_agrupada["hoje"][s]["TALHA"].keys())
+    equip_em_uso_hoje = len(hoje_set)
 
-            html_glp += f'<summary><div class="master-metric-title">⛽ Consumo de GLP da Frota</div><div class="master-metric-val">{total_glp_recente:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">KG</span></div><div class="master-metric-sub" style="color: #fd7e14;">Acumulado do Mês Atual ({mes_recente})</div></summary>'
-            html_glp += '<div class="master-content">'
-            
-            df_maq = df_mes_recente.groupby("MAQUINA")["KG_NUM"].sum().reset_index().sort_values(by="KG_NUM", ascending=False)
-            
-            if not df_maq.empty:
-                chart_data_glp = []
-                for _, row in df_maq.iterrows():
-                    val_kg_par = forcar_par(row["KG_NUM"])
-                    chart_data_glp.append({
-                        "label": row["MAQUINA"],
-                        "value": val_kg_par,
-                        "text": f"{val_kg_par:,.0f} kg",
-                        "color": "#fd7e14"
-                    })
-                html_glp += build_vertical_chart(chart_data_glp)
-            else:
-                html_glp += '<div style="color:gray; text-align:center;">Sem consumo registrado.</div>'
-            html_glp += '</div>'
-else:
-    html_glp += '<summary><div class="master-metric-title">⛽ Consumo de GLP</div></summary><div class="master-content"><div style="color:gray;">Planilha indisponível.</div></div>'
+html_frota += f'<summary><div class="master-metric-title">🚜 Frota / Equipamentos</div><div class="master-metric-val">{equip_em_uso_hoje} <span style="font-size:1.1rem; color:#94a3b8;">Veículos Logados Hoje</span></div><div class="master-metric-sub" style="color: #E67E22;">Empilhadeiras e Talhas Elétricas</div></summary>'
 
-html_glp += '</details>'
-st.markdown(html_glp, unsafe_allow_html=True)
+html_frota += '<div class="master-content">'
 
-st.markdown("<br><center><span style='color:#94a3b8; font-size: 0.80rem; font-weight: 600; letter-spacing: 0.5px;'>A.L.O.V.E - Mobile / Developed by Cristiano Ciriaco</span></center>", unsafe_allow_html=True)
+html_frota += """
+<style>
+.f-tabs-container { margin-bottom: 20px; }
+.f-tabs-main { display: flex; gap: 8px; justify-content: center; margin-bottom: 16px; }
+.f-tabs-main label { padding: 8px 16px; background-color: #162438; color: #94a3b8; border-radius: 6px; cursor: pointer; border: 1px solid #1c2b42; font-weight: 800; font-size: 0.9rem; transition: 0.2s; }
+.f-tabs-sub { display: flex; gap: 6px; justify-content: center; margin-bottom: 14px; }
+.f-tabs-sub label { padding: 6px 12px; background-color: #111c2e; color: #64748b; border-radius: 6px; cursor: pointer; border: 1px solid #1c2b42; font-weight: 800; font-size: 0.8rem; transition: 0.2s; }
+
+/* Escondendo os inputs */
+.f-rad-main, .f-rad-sub { display: none; }
+
+/* Navegação Principal (Dias) */
+.f-content-dia { display: none; animation: fadeIn 0.3s ease; }
+#f_dia_ontem:checked ~ .f-tabs-main .lbl-f-ontem { background-color: #38bdf8; color: #0a101d; border-color: #38bdf8; }
+#f_dia_hoje:checked ~ .f-tabs-main .lbl-f-hoje { background-color: #E67E22; color: #0a101d; border-color: #E67E22; }
+#f_dia_ontem:checked ~ #f_box_ontem { display: block; }
+#f_dia_hoje:checked ~ #f_box_hoje { display: block; }
+
+/* Navegação Secundária (Turnos - Hoje) */
+.f-content-turno-hoje { display: none; background-color: #05080f; padding: 14px; border-radius: 8px; border: 1px solid #1c2b42; }
+#f_h_00:checked ~ .f-tabs-sub .lbl-h-00, #f_h_08:checked ~ .f-tabs-sub .lbl-h-08, #f_h_16:checked ~ .f-tabs-sub .lbl-h-16 { background-color: #0d2417; color: #00D672; border-color: #00D672; }
+#f_h_00:checked ~ #f_h_content_00, #f_h_08:checked ~ #f_h_content_08, #f_h_16:checked ~ #f_h_content_16 { display: block; }
+
+/* Navegação Secundária (Turnos - Ontem) */
+.f-content-turno-ontem { display: none; background-color: #05080f; padding: 14px; border-radius: 8px; border: 1px solid #1c2b42; }
+#f_o_00:checked ~ .f-tabs-sub .lbl-o-00, #f_o_08:checked ~ .f-tabs-sub .lbl-o-08, #f_o_16:checked ~ .f-tabs-sub .lbl-o-16 { background-color: #0d2417; color: #00D672; border-color: #00D672; }
+#f_o_00:checked ~ #f_o_content_00, #f_o_08:checked ~ #f_o_content_08, #f_o_16:checked ~ #f_o_content_16 { display: block; }
+
+/* Tags de Equipamentos */
+.f-tag-ok { background-color: #00D672; color: #0a101d; }
+.f-tag-avaria { background-color: #E74C3C; color: #ffffff; }
+.f-tag-aten { background-color: #FFD600; color: #0a101d; }
+.f-tag-title { font-size: 0.85rem; color: #ffffff; font-weight: 800; margin-bottom: 8px; border-bottom: 1px dashed #1c2b42; padding-bottom: 4px; }
+.f-tag-container { margin-bottom: 16px; }
+</style>
+"""
+
+agora_h = agora_br.hour
+ch_h_00 = "checked" if agora_h < 8 else ""
+ch_h_08 = "checked" if 8 <= agora_h < 16 else ""
+ch_h_16 = "checked" if 16 <= agora_h else ""
+
+html_frota += f"""
+<div class="f-tabs-container" style="text-align: center;">
+    <input type="radio" name="f_day" id="f_dia_ontem" class="f-rad-main">
+    <input type="radio" name="f_day" id="f_dia_hoje" class="f-rad-main" checked>
+    
+    <div class="f-tabs-main">
+        <label for="f_dia_ontem" class="lbl-f-ontem">⏮️ Ontem (D-1)</label>
+        <label for="f_dia_hoje" class="lbl-f-hoje">📅 Hoje</label>
+    </div>
+"""
+
+def render_tags(dict_equip):
+    if not dict_equip: return "<span style='color:#64748b; font-size:0.8rem; font-weight:600;'>Nenhum registro.</span>"
+    html_t = ""
+    for eq, cond in sorted(dict_equip.items()):
+        cls = "f-tag-avaria" if cond == "AVARIA" else ("f-tag-aten" if cond == "ATENÇÃO" else "f-tag-ok")
+        html_t += f"<span class='tag-box {cls}'>{eq}</span> "
+    return html_t
+
+# ================================ HOJE ================================
+html_frota += f"""
+    <div id="f_box_hoje" class="f-content-dia">
+        <input type="radio" name="f_h_shift" id="f_h_00" class="f-rad-sub" {ch_h_00}>
+        <input type="radio" name="f_h_shift" id="f_h_08" class="f-rad-sub" {ch_h_08}>
+        <input type="radio" name="f_h_shift" id="f_h_16" class="f-rad-sub" {ch_h_16}>
+        
+        <div class="f-tabs-sub">
+            <label for="f_h_00" class="lbl-h-00">00h - 08h</label>
+            <label for="f_h_08" class="lbl-h-08">08h - 16h</label>
+            <label for="f_h_16" class="lbl-h-16">16h - 00h</label>
+        </div>
+"""
+for s_id, s_key in [("f_h_content_00", "00h - 08h"), ("f_h_content_08", "08h - 16h"), ("f_h_content_16", "16h - 00h")]:
+    html_frota += f"""
+        <div id="{s_id}" class="f-content-turno-hoje" style="text-align: left;">
+            <div class="f-tag-container">
+                <div class="f-tag-title">🟢 Empilhadeiras Logadas</div>
+                <div>{render_tags(frota_agrupada["hoje"][s_key]["EMP"])}</div>
+            </div>
+            <div class="f-tag-container" style="margin-bottom:0;">
+                <div class="f-tag-title">🏗️ Talhas / Pontes Rolantes</div>
+                <div>{render_tags(frota_agrupada["hoje"][s_key]["TALHA"])}</div>
+            </div>
+        </div>
+    """
+html_frota += "</div>"
+
+# =============================== ONTEM ===============================
+html_frota += f"""
+    <div id="f_box_ontem" class="f-content-dia">
+        <input type="radio" name="f_o_shift" id="f_o_00" class="f-rad-sub">
+        <input type="radio" name="f_o_shift" id="f_o_08" class="f-rad-sub" checked>
+        <input type="radio" name="f_o_shift" id="f_o_16" class="f-rad-sub">
+        
+        <div class="f-tabs-sub">
+            <label for="f_o_00" class="lbl-o-00">00h - 08h</label>
+            <label for="f_o_08" class="lbl-o-08">08h - 16h</label>
+            <label for="f_o_16" class="lbl-o-16">16h - 00h</label>
+        </div>
+"""
+for s_id, s_key in [("f_o_content_00", "00h - 08h"), ("f_o_content_08", "08h - 16h"), ("f_o_content_16", "16h - 00h")]:
+    html_frota += f"""
+        <div id="{s_id}" class="f-content-turno-ontem" style="text-align: left;">
+            <div class="f-tag-container">
+                <div class="f-tag-title">🟢 Empilhadeiras Logadas</div>
+                <div>{render_tags(frota_agrupada["ontem"][s_key]["EMP"])}</div>
+            </div>
+            <div class="f-tag-container" style="margin-bottom:0;">
+                <div class="f-tag-title">🏗️ Talhas / Pontes Rolantes</div>
+                <div>{render_tags(frota_agrupada["ontem"][s_key]["TALHA"])}</div>
+            </div>
+        </div>
+    """
+html_frota += "</div></div></div></details>"
+st.markdown(html_frota, unsafe_allow_html=True)
