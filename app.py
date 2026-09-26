@@ -16,7 +16,7 @@ st.set_page_config(
 )
 
 # ==============================================================================
-# 🎨 CSS AVANÇADO (CARDS NEON + EXPANDERS + GRÁFICOS VERTICAIS)
+# 🎨 CSS AVANÇADO (CARDS NEON + EXPANDERS + GRÁFICOS VERTICAIS + FROTA TABS)
 # ==============================================================================
 st.markdown("""
     <style>
@@ -29,6 +29,7 @@ st.markdown("""
         
         input[type="radio"] { display: none; }
         
+        /* ---------------- PREVISÕES ---------------- */
         .prev-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -84,6 +85,7 @@ st.markdown("""
             text-shadow: 0 0 10px rgba(255, 119, 0, 0.4);
         }
 
+        /* ---------------- MASTER BOX ---------------- */
         details.master-box {
             background-color: #111c2e;
             border-radius: 12px;
@@ -104,7 +106,6 @@ st.markdown("""
             -webkit-tap-highlight-color: transparent; 
         }
         details.master-box summary::-webkit-details-marker { display: none; }
-        
         details.master-box summary::after {
             content: '▼';
             position: absolute; right: 20px; top: 50%; transform: translateY(-50%);
@@ -112,24 +113,55 @@ st.markdown("""
         }
         details.master-box[open] summary::after { transform: translateY(-50%) rotate(180deg); color: #38bdf8; }
         
-        /* 🔥 FONTES E ÍCONES AUMENTADOS AQUI: */
         .master-metric-title { color: #94a3b8; font-size: 1.1rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; padding-right: 20px;}
         .master-metric-val { color: #ffffff; font-size: 2.4rem; font-weight: 900; line-height: 1.1; margin-bottom: 6px; }
         .master-metric-sub { font-size: 0.95rem; font-weight: 700; }
-        
         .master-content { background-color: #0a101d; padding: 16px; border-top: 1px dashed #1c2b42; }
 
+        /* ---------------- PÁTIO E EXPEDIÇÃO ---------------- */
         .patio-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
         .card-patio-sub { background-color: #111c2e; border-radius: 8px; padding: 10px; border-left: 4px solid; border: 1px solid #1c2b42;}
         .card-patio-title { font-weight: 800; font-size: 0.95rem; margin-bottom: 4px; }
         .card-patio-qtd { font-size: 1.4rem; font-weight: 900; color: #ffffff; }
         .card-patio-ton { font-size: 0.85rem; color: #94a3b8; font-weight: 600; }
 
-        .tag-box { display: inline-block; padding: 6px 10px; margin: 3px; border-radius: 6px; font-weight: 800; font-size: 0.8rem; text-align: center; }
-        .tag-op { background-color: #00D672; color: #0a101d; }
-        .tag-standby { background-color: #E74C3C; color: #ffffff; }
-        .tag-talha { background-color: #F39C12; color: #0a101d; }
+        .css-tabs-exp label {
+            display: inline-block; padding: 6px 16px; background-color: #162438; color: #94a3b8; 
+            border-radius: 6px; font-size: 0.85rem; font-weight: 800; margin: 0 4px; 
+            cursor: pointer; border: 1px solid #1c2b42; transition: 0.2s;
+        }
+        .css-tabs-exp input[type="radio"]#tab_ontem:checked + label.lbl-ontem { background-color: #38bdf8; color: #0a101d; border-color: #38bdf8; }
+        .css-tabs-exp input[type="radio"]#tab_hoje:checked + label.lbl-hoje { background-color: #00D672; color: #0a101d; border-color: #00D672; }
+        .tab-content-exp { display: none; animation: fadeIn 0.3s ease; }
+        #tab_ontem:checked ~ #content_ontem { display: block; }
+        #tab_hoje:checked ~ #content_hoje { display: block; }
+
+        /* ---------------- FROTA (DKRO) ---------------- */
+        .frota-tabs-main { display: flex; gap: 8px; justify-content: center; margin-bottom: 16px; }
+        .frota-tabs-main label { padding: 8px 16px; background-color: #162438; color: #94a3b8; border-radius: 6px; cursor: pointer; border: 1px solid #1c2b42; font-weight: 800; font-size: 0.9rem; transition: 0.2s; }
+        .frota-tabs-sub { display: flex; gap: 6px; justify-content: center; margin-bottom: 14px; }
+        .frota-tabs-sub label { padding: 6px 12px; background-color: #111c2e; color: #64748b; border-radius: 6px; cursor: pointer; border: 1px solid #1c2b42; font-weight: 800; font-size: 0.8rem; transition: 0.2s; }
+
+        .f-rad-main, .f-rad-sub { display: none; }
+        .f-content-dia { display: none; animation: fadeIn 0.3s ease; }
         
+        #frota_dia_ontem:checked ~ .frota-tabs-main .lbl-f-ontem { background-color: #38bdf8; color: #0a101d; border-color: #38bdf8; }
+        #frota_dia_hoje:checked ~ .frota-tabs-main .lbl-f-hoje { background-color: #E67E22; color: #0a101d; border-color: #E67E22; }
+        #frota_dia_ontem:checked ~ #frota_box_ontem { display: block; }
+        #frota_dia_hoje:checked ~ #frota_box_hoje { display: block; }
+
+        .f-content-turno-hoje, .f-content-turno-ontem { display: none; background-color: #05080f; padding: 14px; border-radius: 8px; border: 1px solid #1c2b42; text-align: left; }
+        #frota_h_00:checked ~ .frota-tabs-sub .lbl-h-00, #frota_h_08:checked ~ .frota-tabs-sub .lbl-h-08, #frota_h_16:checked ~ .frota-tabs-sub .lbl-h-16, #frota_o_00:checked ~ .frota-tabs-sub .lbl-o-00, #frota_o_08:checked ~ .frota-tabs-sub .lbl-o-08, #frota_o_16:checked ~ .frota-tabs-sub .lbl-o-16 { background-color: #0d2417; color: #00D672; border-color: #00D672; }
+        
+        #frota_h_00:checked ~ #frota_h_content_00, #frota_h_08:checked ~ #frota_h_content_08, #frota_h_16:checked ~ #frota_h_content_16, #frota_o_00:checked ~ #frota_o_content_00, #frota_o_08:checked ~ #frota_o_content_08, #frota_o_16:checked ~ #frota_o_content_16 { display: block; }
+
+        .f-tag-ok { background-color: #00D672; color: #0a101d; }
+        .f-tag-avaria { background-color: #E74C3C; color: #ffffff; }
+        .f-tag-aten { background-color: #FFD600; color: #0a101d; }
+        .f-tag-title { font-size: 0.85rem; color: #ffffff; font-weight: 800; margin-bottom: 8px; border-bottom: 1px dashed #1c2b42; padding-bottom: 4px; }
+        .f-tag-container { margin-bottom: 16px; }
+        .tag-box { display: inline-block; padding: 6px 10px; margin: 3px; border-radius: 6px; font-weight: 800; font-size: 0.8rem; text-align: center; }
+
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 """, unsafe_allow_html=True)
@@ -252,6 +284,26 @@ def build_vertical_chart(data, height=150):
     lbl_html += "</div>"
     return html + lbl_html
 
+def classificar_kpi_mobile(valor, tipo):
+    if valor == 0.0: return "#94a3b8" 
+    if tipo == "alvura":
+        if valor < 88.50: return "#E74C3C"
+        elif valor < 88.70: return "#FFD600"
+        return "#00D672"
+    elif tipo == "sujidade":
+        if valor > 2.50: return "#E74C3C"
+        elif valor > 2.00: return "#FFD600"
+        return "#00D672"
+    elif tipo == "viscosidade":
+        if valor < 650.0: return "#E74C3C"
+        elif valor < 680.0: return "#FFD600"
+        return "#00D672"
+    elif tipo == "ph":
+        if valor > 0 and (valor < 5.50 or valor > 8.50): return "#E74C3C"
+        elif valor > 0 and ((5.50 <= valor < 6.00) or (8.00 < valor <= 8.50)): return "#FFD600"
+        return "#00D672"
+    return "#00D672"
+
 # ==============================================================================
 # 🚀 CARREGAMENTO DAS ABAS MOBILE GERADAS PELO CORE
 # ==============================================================================
@@ -349,7 +401,6 @@ with col_btn:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# BLOCOS DE PREVISÕES (NEON LIMPO - SEM SUBTÍTULO)
 html_previsoes = f"""
 <div class="prev-container">
     <div class="prev-card-prod">
@@ -364,7 +415,6 @@ html_previsoes = f"""
 """
 st.markdown(html_previsoes, unsafe_allow_html=True)
 
-# ALERTAS OPERACIONAIS
 if not df_alertas.empty:
     linhas_alt = []
     tem_critico = False
@@ -395,16 +445,13 @@ fim_ano = date(hoje_dt.year, 12, 31)
 dias_restantes = max(1, (fim_ano - hoje_dt).days)
 meta_teto_estoque = 3468.0
 
-# 📌 Valores base oficiais puxados da aba Parametros_Ano da nuvem
 carr_base_ano = 1362558.0 
 prod_base_ano = 1362676.0 
 ritmo_esperado_dia = 5200.0
 
-# SOMANDO O VOLUME DE HOJE À BASE ACUMULADA ATE ONTEM
 carr_ano_atual = forcar_par(carr_base_ano + vol_hoje)
 prod_ano_atual = forcar_par(prod_base_ano + prod_hoje_calc)
 
-# Balanço entre Produção e Expedição (Sempre Positivo)
 diff_prod_carr = forcar_par(abs(prod_ano_atual - carr_ano_atual))
 
 if carr_ano_atual >= prod_ano_atual:
@@ -422,7 +469,6 @@ proj_prod_fechamento = forcar_par(prod_ano_atual + (dias_restantes * ritmo_esper
 carr_futuro_nec = (estoque_total + (dias_restantes * ritmo_esperado_dia)) - meta_teto_estoque
 proj_carr_fechamento = forcar_par(carr_ano_atual + carr_futuro_nec)
 
-# 🔥 COR DA BORDA ALTERADA PARA AZUL FORTE (#007BFF) AQUI
 html_meta_anual = f"""
 <details class="master-box" style="border-left-color: #007BFF;" open>
     <summary>
@@ -467,32 +513,10 @@ for tit, chv, cor in blocos_patio:
 
 html_patio += "</div></details>"
 st.markdown(html_patio, unsafe_allow_html=True)
+
 # ==============================================================================
 # 🏭 BLOCO 2: PRODUÇÃO DO DIA (MS1 / MS2)
 # ==============================================================================
-def classificar_kpi_mobile(valor, tipo):
-    """Retorna a cor baseada na regra de três níveis: Normal, Alerta e Crítico"""
-    if valor == 0.0: return "#94a3b8"  # Cinza neutro se zerado
-    
-    if tipo == "alvura":
-        if valor < 88.50: return "#E74C3C"          # Vermelho
-        elif valor < 88.70: return "#FFD600"        # Amarelo (Alerta)
-        return "#00D672"                            # Verde
-    elif tipo == "sujidade":
-        if valor > 2.50: return "#E74C3C"
-        elif valor > 2.00: return "#FFD600"
-        return "#00D672"
-    elif tipo == "viscosidade":
-        if valor < 650.0: return "#E74C3C"
-        elif valor < 680.0: return "#FFD600"
-        return "#00D672"
-    elif tipo == "ph":
-        if valor > 0 and (valor < 5.50 or valor > 8.50): return "#E74C3C"
-        elif valor > 0 and ((5.50 <= valor < 6.00) or (8.00 < valor <= 8.50)): return "#FFD600"
-        return "#00D672"
-        
-    return "#00D672"
-
 html_prod_content = ""
 
 for maq in ["MS1", "MS2"]:
@@ -642,22 +666,6 @@ html_exp_completo = f"""
         </div>
     </div>
 </details>
-<style>
-    .css-tabs-exp label {{
-        display: inline-block; padding: 6px 16px; background-color: #162438; color: #94a3b8; 
-        border-radius: 6px; font-size: 0.85rem; font-weight: 800; margin: 0 4px; 
-        cursor: pointer; border: 1px solid #1c2b42; transition: 0.2s;
-    }}
-    .css-tabs-exp input[type="radio"]#tab_ontem:checked + label.lbl-ontem {{
-        background-color: #38bdf8; color: #0a101d; border-color: #38bdf8;
-    }}
-    .css-tabs-exp input[type="radio"]#tab_hoje:checked + label.lbl-hoje {{
-        background-color: #00D672; color: #0a101d; border-color: #00D672;
-    }}
-    .tab-content-exp {{ display: none; animation: fadeIn 0.3s ease; }}
-    #tab_ontem:checked ~ #content_ontem {{ display: block; }}
-    #tab_hoje:checked ~ #content_hoje {{ display: block; }}
-</style>
 """
 st.markdown(html_exp_completo.replace('\n', ''), unsafe_allow_html=True)
 
@@ -675,13 +683,12 @@ if dados_segregados:
         t_par = forcar_par(row["Toneladas"])
         mat_nome = str(row["Material"]).upper()
         
-        # 🎨 Regra de cores customizada para os materiais
         if "SQ" in mat_nome:
-            cor_barra = "#FF7700"  # Laranja Neon vibrante para SQ
+            cor_barra = "#FF7700" 
         elif "EQ" in mat_nome:
-            cor_barra = "#00D672"  # Verde para EQ
+            cor_barra = "#00D672" 
         else:
-            cor_barra = "#38bdf8"  # Azul padrão para os demais
+            cor_barra = "#38bdf8" 
             
         chart_data_est.append({
             "label": row["Material"],
@@ -695,10 +702,10 @@ else:
 
 html_est += "</div></details>"
 st.markdown(html_est, unsafe_allow_html=True)
+
 # ==============================================================================
 # 🚜 BLOCO 5: FROTA E EQUIPAMENTOS (VIA HISTÓRICO DKRO)
 # ==============================================================================
-# Puxa da aba Historico_DKRO
 df_frota = carregar_dados_nuvem("Historico_DKRO", cabecalho=0)
 html_frota = '<details class="master-box" style="border-left-color: #E67E22;">'
 
@@ -706,7 +713,6 @@ agora_br = datetime.utcnow() - timedelta(hours=3)
 hoje_date = agora_br.date()
 ontem_date = hoje_date - timedelta(days=1)
 
-# Estrutura base para organizar os equipamentos
 frota_agrupada = {
     "hoje": {"00h - 08h": {"EMP": {}, "TALHA": {}}, "08h - 16h": {"EMP": {}, "TALHA": {}}, "16h - 00h": {"EMP": {}, "TALHA": {}}},
     "ontem": {"00h - 08h": {"EMP": {}, "TALHA": {}}, "08h - 16h": {"EMP": {}, "TALHA": {}}, "16h - 00h": {"EMP": {}, "TALHA": {}}}
@@ -760,42 +766,6 @@ if not df_frota.empty and len(df_frota.columns) >= 7:
 html_frota += f'<summary><div class="master-metric-title">🚜 Frota / Equipamentos</div><div class="master-metric-val">{equip_em_uso_hoje} <span style="font-size:1.1rem; color:#94a3b8;">Veículos Logados Hoje</span></div><div class="master-metric-sub" style="color: #E67E22;">Empilhadeiras e Talhas Elétricas</div></summary>'
 
 html_frota += '<div class="master-content">'
-
-html_frota += """
-<style>
-.frota-tabs-main { display: flex; gap: 8px; justify-content: center; margin-bottom: 16px; }
-.frota-tabs-main label { padding: 8px 16px; background-color: #162438; color: #94a3b8; border-radius: 6px; cursor: pointer; border: 1px solid #1c2b42; font-weight: 800; font-size: 0.9rem; transition: 0.2s; }
-.frota-tabs-sub { display: flex; gap: 6px; justify-content: center; margin-bottom: 14px; }
-.frota-tabs-sub label { padding: 6px 12px; background-color: #111c2e; color: #64748b; border-radius: 6px; cursor: pointer; border: 1px solid #1c2b42; font-weight: 800; font-size: 0.8rem; transition: 0.2s; }
-
-/* Escondendo os inputs */
-.f-rad-main, .f-rad-sub { display: none; }
-
-/* Navegação Principal (Dias) */
-.f-content-dia { display: none; animation: fadeIn 0.3s ease; }
-#frota_dia_ontem:checked ~ .frota-tabs-main .lbl-f-ontem { background-color: #38bdf8; color: #0a101d; border-color: #38bdf8; }
-#frota_dia_hoje:checked ~ .frota-tabs-main .lbl-f-hoje { background-color: #E67E22; color: #0a101d; border-color: #E67E22; }
-#frota_dia_ontem:checked ~ #frota_box_ontem { display: block; }
-#frota_dia_hoje:checked ~ #frota_box_hoje { display: block; }
-
-/* Navegação Secundária (Turnos - Hoje) */
-.f-content-turno-hoje { display: none; background-color: #05080f; padding: 14px; border-radius: 8px; border: 1px solid #1c2b42; text-align: left; }
-#frota_h_00:checked ~ .frota-tabs-sub .lbl-h-00, #frota_h_08:checked ~ .frota-tabs-sub .lbl-h-08, #frota_h_16:checked ~ .frota-tabs-sub .lbl-h-16 { background-color: #0d2417; color: #00D672; border-color: #00D672; }
-#frota_h_00:checked ~ #frota_h_content_00, #frota_h_08:checked ~ #frota_h_content_08, #frota_h_16:checked ~ #frota_h_content_16 { display: block; }
-
-/* Navegação Secundária (Turnos - Ontem) */
-.f-content-turno-ontem { display: none; background-color: #05080f; padding: 14px; border-radius: 8px; border: 1px solid #1c2b42; text-align: left; }
-#frota_o_00:checked ~ .frota-tabs-sub .lbl-o-00, #frota_o_08:checked ~ .frota-tabs-sub .lbl-o-08, #frota_o_16:checked ~ .frota-tabs-sub .lbl-o-16 { background-color: #0d2417; color: #00D672; border-color: #00D672; }
-#frota_o_00:checked ~ #frota_o_content_00, #frota_o_08:checked ~ #frota_o_content_08, #frota_o_16:checked ~ #frota_o_content_16 { display: block; }
-
-/* Tags de Equipamentos */
-.f-tag-ok { background-color: #00D672; color: #0a101d; }
-.f-tag-avaria { background-color: #E74C3C; color: #ffffff; }
-.f-tag-aten { background-color: #FFD600; color: #0a101d; }
-.f-tag-title { font-size: 0.85rem; color: #ffffff; font-weight: 800; margin-bottom: 8px; border-bottom: 1px dashed #1c2b42; padding-bottom: 4px; }
-.f-tag-container { margin-bottom: 16px; }
-</style>
-"""
 
 agora_h = agora_br.hour
 ch_h_00 = "checked" if agora_h < 8 else ""
