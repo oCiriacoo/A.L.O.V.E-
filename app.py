@@ -508,7 +508,6 @@ for maq in ["MS1", "MS2"]:
         l2 = q_dados.get('l2', 0)
         desclass = q_dados.get("desclassificando", False)
         
-        # Cores aplicadas pela nova regra de 3 níveis
         c_alv = classificar_kpi_mobile(q_alvura, "alvura")
         c_suj = classificar_kpi_mobile(q_suj, "sujidade")
         c_vis = classificar_kpi_mobile(q_visc, "viscosidade")
@@ -523,7 +522,8 @@ for maq in ["MS1", "MS2"]:
         <div style='background-color: #111c2e; border: 1.5px solid {cor_card_borda}; border-radius: 8px; padding: 16px; margin-bottom: 12px;'>
             <div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;'>
                 <span style='color:#ffffff; font-weight:900; font-size:1.25rem;'>⚙️ {maq}</span>
-                <span style='color:#FF9F1C; font-weight:900; font-size:1.05rem;'>📦 MAT: {mat_maq}</span>
+                <!-- 🔥 TAMANHO DO MATERIAL AUMENTADO AQUI (1.35rem) -->
+                <span style='color:#FF9F1C; font-weight:900; font-size:1.35rem;'>📦 MAT: {mat_maq}</span>
                 <span style='color:#38bdf8; font-weight:900; font-size:1.4rem;'>{p_maq:,.0f} t</span>
             </div>
             
