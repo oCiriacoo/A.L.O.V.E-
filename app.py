@@ -522,7 +522,6 @@ for maq in ["MS1", "MS2"]:
         <div style='background-color: #111c2e; border: 1.5px solid {cor_card_borda}; border-radius: 8px; padding: 16px; margin-bottom: 12px;'>
             <div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;'>
                 <span style='color:#ffffff; font-weight:900; font-size:1.25rem;'>⚙️ {maq}</span>
-                <!-- 🔥 TAMANHO DO MATERIAL AUMENTADO AQUI (1.35rem) -->
                 <span style='color:#FF9F1C; font-weight:900; font-size:1.35rem;'>📦 MAT: {mat_maq}</span>
                 <span style='color:#38bdf8; font-weight:900; font-size:1.4rem;'>{p_maq:,.0f} t</span>
             </div>
@@ -663,10 +662,10 @@ html_exp_completo = f"""
 st.markdown(html_exp_completo.replace('\n', ''), unsafe_allow_html=True)
 
 # ==============================================================================
-# 📦 BLOCO 4: ESTOQUE TOTAL E MATERIAIS (COM COR DIFERENTE PARA SQ)
+# 📦 BLOCO 4: ESTOQUE TOTAL E MATERIAIS
 # ==============================================================================
 html_est = '<details class="master-box" style="border-left-color: #9b59b6;">'
-html_est += f'<summary><div class="master-metric-title">📦 Estoque Físico no Armazém</div><div class="master-metric-val">{estoque_total:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div><div class="master-metric-sub" style="color: #9b59b6;">Status Transbordo: {status_transbordo}</div></summary>'
+html_est += f'<summary><div class="master-metric-title">📦 Estoque Físico no Armazém</div><div class="master-metric-val">{estoque_total:,.0f} <span style="font-size:1.1rem; color:#94a3b8;">TON</span></div><div class="master-metric-sub" style="color: #9b59b6;">Status do Armazém: {status_transbordo}</div></summary>'
 html_est += '<div class="master-content">'
 
 if dados_segregados:
@@ -696,7 +695,6 @@ else:
 
 html_est += "</div></details>"
 st.markdown(html_est, unsafe_allow_html=True)
-
 # ==============================================================================
 # 🚜 BLOCO 5: FROTA
 # ==============================================================================
